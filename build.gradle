@@ -1,0 +1,61 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:5.1.0'
+    }
+}
+
+allprojects {
+    apply plugin: 'java'
+    apply plugin: 'com.github.johnrengelman.shadow'
+
+    group = pluginGroup
+    version = pluginVersion
+
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+
+    repositories {
+        mavenCentral()
+        maven {
+            // Spigot
+            url = 'https://hub.spigotmc.org/nexus/content/groups/public/'
+        }
+        maven {
+            // VaultAPI
+            url = 'https://jitpack.io'
+        }
+        maven {
+            // ProtocolLib
+            url "http://repo.dmulloy2.net/nexus/repository/public/"
+        }
+    }
+
+    processResources {
+        from(sourceSets.main.resources.srcDirs) {
+            filter ReplaceTokens, tokens: [version: version]
+        }
+    }
+}
+
+dependencies {
+    shadow 'com.google.code.findbugs:jsr305:3.0.2'
+    shadow 'org.spigotmc:spigot-api:1.16.1-R0.1-SNAPSHOT'
+    shadow 'com.github.MilkBowl:VaultAPI:1.7'
+    compile 'com.github.WesJD.AnvilGUI:anvilgui:master-SNAPSHOT'
+    shadow 'com.comphenix.protocol:ProtocolLib:4.4.0'
+    compile project('Support-WorldEdit-6')
+    compile project('Support-WorldEdit-7')
+}
+
+shadowJar {
+    classifier = ''
+    configurations = [project.configurations.compile]
+}
+
+build.dependsOn(shadowJar)
