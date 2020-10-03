@@ -1,0 +1,33 @@
+name: YEUHLobby
+main: kern.YEUHLobby
+version: 1.0
+api-version: 1.16
+author: mcCesium
+descript: YEUH
+commands:
+  games:
+    description: List all currently registered games.
+    usage: /<command>
+    permission: yeuhlobby.commands.games
+  spectate:
+    description: Spectate a currently active game.
+    usage: /<command> [Game name]
+  rating:
+    description: See your player rating.
+    usage: /<command> <subcommands>
+  opt:
+    description: Opt in/out of the queue.
+    usage: /<command> [in|out]
+  plugin:
+    description: See the plugin.
+    usage: /<command>
+    aliases: [pl, plugins]
+  help:
+    description: Get help.
+    usage: /<command>
+  rules:
+    description: View rules of server.
+    usage: /<command>
+  discord:
+    description: View discord join link.
+    usage: /<command>
