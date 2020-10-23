@@ -17,24 +17,34 @@ public class SpectateCommand implements CommandExecutor {
         if (!(sender instanceof Player)) return true;
 
         Player player = (Player) sender;
-        if (!YEUHLobby.getWarden().hasPlayerSigned(player.getName())) {
-            player.sendMessage(
-                    YEUHLobby.PREFIX + "You must read the \u00a7d/rules \u00a7fbefore you can spectate a game!");
-            return true;
-        }
 
         List<Game> playingGames = YEUHLobby.getPlugin().getPlayingGames();
+        List<Game> openGames = YEUHLobby.getPlugin().getOpenGames();
 
         if (args.length == 0) {
 
             if (playingGames.isEmpty()) {
-                sender.sendMessage("\u00a7cThere aren't any active games for you to spectate!");
+                sender.sendMessage("\u00a7cThere aren't any active games for you to spectate at the moment!");
                 return true;
             }
 
-            playingGames.get((int) (Math.random() * playingGames.size())).sendPlayerToGame((Player) sender);
+            playingGames.get((int) (Math.random() * playingGames.size())).sendPlayerToGame(player);
         } else if (args.length == 1) {
-            for (Game g : playingGames) { if (args[0].equals(g.server)) g.sendPlayerToGame((Player) sender); }
+            for (Game g : playingGames) {
+                if (args[0].equalsIgnoreCase(g.server)) {
+                    g.sendPlayerToGame(player);
+                    return true;
+                }
+            }
+
+            for (Game g : openGames) {
+                if (args[0].equalsIgnoreCase(g.server)) {
+                    sender.sendMessage(
+                            "\u00a7cThat game isn't currently active, but sure I'll send you there anyways!");
+                    g.sendPlayerToGame(player);
+                    return true;
+                }
+            }
 
             sender.sendMessage(
                     "\u00a7cThat game doesn't exist or isn't currently active! Use /games to list all registered games.");

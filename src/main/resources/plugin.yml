@@ -15,6 +15,9 @@ commands:
   rating:
     description: See your player rating.
     usage: /<command> <subcommands>
+  stats:
+    description: See your player stats.
+    usage: /<command> <subcommands>
   opt:
     description: Opt in/out of the queue.
     usage: /<command> [in|out]
@@ -30,4 +33,19 @@ commands:
     usage: /<command>
   discord:
     description: View discord join link.
+    usage: /<command>
+  updatescenarioboard:
+    description: Update the scenario board.
+    usage: /<command>
+  list:
+    description: List all players online
+    usage: /<command>
+  join:
+    description: Join a game
+    usage: /<command>
+  fakeleave:
+    description: Fake leave server
+    usage: /<command>
+  patreon:
+    description: Shows patreon info!
     usage: /<command>

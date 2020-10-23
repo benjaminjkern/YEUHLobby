@@ -21,7 +21,6 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	public static final String PREFIX = "\u00a75(\u00a7d\u00a7lYEUH\u00a75) \u00a7f";
 
 	private List<Game> games;
-	private Queue<Player> playerQueue;
 
 	public static final int MAX_GAMES = 2;
 
@@ -31,7 +30,6 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 		sk = new ScoreKeeper();
 		warden = new Warden();
 		games = new ArrayList<>();
-		playerQueue = new LinkedList<>();
 
 		this.getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
 		this.getServer().getMessenger().registerIncomingPluginChannel(this, "BungeeCord", this);
@@ -46,11 +44,17 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 		getCommand("games").setExecutor(new GamesCommand());
 		getCommand("spectate").setExecutor(new SpectateCommand());
 		getCommand("rating").setExecutor(new RatingCommand());
+		getCommand("stats").setExecutor(new StatsCommand(sk));
 		getCommand("opt").setExecutor(new OptCommand());
 		getCommand("plugin").setExecutor(new PluginCommand());
 		getCommand("help").setExecutor(new HelpCommand());
 		getCommand("rules").setExecutor(new RulesCommand());
 		getCommand("discord").setExecutor(new DiscordCommand());
+		getCommand("updatescenarioboard").setExecutor(new UpdateScenarioBoardCommand());
+		getCommand("list").setExecutor(new ListCommand());
+		getCommand("join").setExecutor(new JoinCommand());
+		getCommand("fakeleave").setExecutor(new FakeLeaveCommand());
+		getCommand("patreon").setExecutor(new PatreonCommand());
 	}
 
 	@Override
@@ -75,9 +79,13 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 				.collect(Collectors.toList());
 	}
 
-	public List<Game> getGames() { return games; }
+	public List<Game> getStartingGames() {
+		return games.stream()
+				.filter(g -> g.gameState.equals("STARTING") || (g.gameState.equals("WAITING") && g.currentSize > 0))
+				.collect(Collectors.toList());
+	}
 
-	public Queue<Player> getPlayerQueue() { return playerQueue; }
+	public List<Game> getGames() { return games; }
 
 	public static Warden getWarden() { return warden; }
 

@@ -14,6 +14,11 @@ public class HelpCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
         if (!(sender instanceof Player)) return true;
 
+        if (args.length >= 1 && args[0].equalsIgnoreCase("patron")) {
+            ((Player) sender).openInventory(GUIInventoryListener.getPatronInventory());
+            return true;
+        }
+
         ((Player) sender).openInventory(GUIInventoryListener.getHelpInventory());
         return true;
     }

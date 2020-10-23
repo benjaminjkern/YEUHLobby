@@ -1,7 +1,7 @@
 package kern.listeners;
 
-import java.util.List;
-import java.util.Queue;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
@@ -10,8 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -20,67 +18,83 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import kern.Game;
 import kern.YEUHLobby;
+import kern.threads.FillItemFrameThread;
 
 public class PlayerListener implements Listener {
 
-    @EventHandler
+    private static Set<Player> sendingToGame = new HashSet<>();
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        Queue<Player> playerQueue = YEUHLobby.getPlugin().getPlayerQueue();
 
-        new BukkitRunnable() {
-            public void run() {
-                if (YEUHLobby.getWarden().hasPlayerSigned(player.getName())) {
-                    player.sendMessage(YEUHLobby.PREFIX
-                            + "You have opted in to the queue. Use \u00a7d/opt out \u00a7fif you would like to stay in the lobby.");
-                    playerQueue.add(player);
-                }
-
-                Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "rating");
+        String joinMessage = "";
+        boolean canGoBackToGame = false;
+        for (Game g : YEUHLobby.getPlugin().getGames()) {
+            if (g.getPlayers().contains(player.getName())) {
+                g.getPlayers().remove(player.getName());
+                joinMessage = "\u00a70(\u00a7d\u00a7l<\u00a70) \u00a77" + player.getDisplayName();
             }
-        }.runTaskLater(YEUHLobby.getPlugin(), 20 * 5);
+
+            if (g.getDisconnectedPlayers().contains(player.getName())) {
+                player.sendMessage(YEUHLobby.PREFIX
+                        + "You disconnected while a game was running! Use \u00a7d/join \u00a7fto go back to the game.");
+            }
+
+            if (g.getWinners().contains(player.getName())) {
+
+                String wonMessage = YEUHLobby.PREFIX + "\u00a7d\u00a7l" + player.getName()
+                        + " \u00a7fhas won the game!";
+
+                for (Player p : Bukkit.getOnlinePlayers()) { p.sendMessage(wonMessage); }
+                player.sendMessage(wonMessage);
+                Bukkit.getLogger().info(wonMessage);
+
+                player.sendMessage(YEUHLobby.PREFIX + "\u00a7dCongrats on your win! You now have \u00a7f\u00a7l"
+                        + YEUHLobby.getScoreKeeper().getStats(player.getName(), true).wins + "\u00a7d wins!");
+
+                g.getWinners().remove(player.getName());
+            }
+        }
+
+        if (joinMessage.isEmpty()) joinMessage = "\u00a70(\u00a7a\u00a7l+\u00a70) \u00a77" + player.getDisplayName();
+        event.setJoinMessage(joinMessage);
+
+        new BukkitRunnable() { public void run() { Bukkit.dispatchCommand(player, "rating"); } }
+                .runTaskLater(YEUHLobby.getPlugin(), 10 * 5);
 
         new BukkitRunnable() {
             @Override
             public void run() {
-                if (!YEUHLobby.getWarden().hasPlayerSigned(player.getName())) {
-                    player.sendMessage(YEUHLobby.PREFIX + "Read the \u00a7d/rules \u00a7fto opt in to the game queue!");
-                    return;
-                }
 
-                int minSize = Integer.MAX_VALUE;
-
-                List<Game> openGames = YEUHLobby.getPlugin().getOpenGames();
-
-                if (!playerQueue.contains(player)) {
-                    player.sendMessage("");
+                if (!YEUHLobby.getPlugin().getStartingGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
-                            + "You are not in the queue at the moment! Use \u00a7d/opt in \u00a7fif you would like to play \u00a75\u00a7lBattle Royale!");
-                } else if (!openGames.isEmpty()) {
-                    for (Game g : openGames) if (g.minSize < minSize) minSize = g.minSize;
-                    int lobbySize = YEUHLobby.getPlugin().getPlayerQueue().size();
-                    if (lobbySize < minSize) {
-                        player.sendMessage("");
-                        player.sendMessage(YEUHLobby.PREFIX + "There " + (lobbySize == 1 ? "is" : "are")
-                                + " only \u00a7d" + lobbySize + " \u00a7fplayer" + (lobbySize == 1 ? "" : "s")
-                                + " in the queue! You need at least \u00a7d" + minSize + " \u00a7fto start a game.");
-                        player.sendMessage(YEUHLobby.PREFIX
-                                + "Tell a friend to join!\n\u00a78\u00a7oOr if you don't have any friends, just wait for someone else to join and become friends with them!");
-                    }
-                }
+                            + "A game is starting right now! If you would like to join, use \u00a7d/join\u00a7f!");
 
-                if (!YEUHLobby.getPlugin().getPlayingGames().isEmpty()) {
+                } else if (!YEUHLobby.getPlugin().getPlayingGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
-                            + "If you would like to spectate an active game, use \u00a7d/spectate\u00a7f!");
-
+                            + "There are active games running! If you would like to spectate one, use \u00a7d/spectate\u00a7f!");
                 }
             }
         }.runTaskTimer(YEUHLobby.getPlugin(), 20 * 5, 20 * 60 * 5);
 
     }
 
-    @EventHandler
-    public void onLeave(PlayerQuitEvent event) { YEUHLobby.getPlugin().getPlayerQueue().remove(event.getPlayer()); }
+    public static void addToSendingToGame(Player p) { sendingToGame.add(p); }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onLeave(PlayerQuitEvent event) {
+        Player p = event.getPlayer();
+        String quitMessage = "";
+
+        if (sendingToGame.contains(p)) {
+            quitMessage = "\u00a70(\u00a7d\u00a7l>\u00a70) \u00a77" + p.getDisplayName();
+            sendingToGame.remove(p);
+        }
+
+        if (quitMessage.isEmpty()) quitMessage = "\u00a70(\u00a7c\u00a7l-\u00a70) \u00a77" + p.getDisplayName();
+        event.setQuitMessage(quitMessage);
+    }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRightClick(PlayerInteractEntityEvent event) {
@@ -91,31 +105,16 @@ public class PlayerListener implements Listener {
                 && Math.abs(entity.getLocation().getZ()) < 100) {
             ItemFrame itemFrame = (ItemFrame) entity;
             ItemStack item = itemFrame.getItem();
-            if (item != null) {
+            if (item.getItemMeta() != null && item.getItemMeta().getLore() != null) {
                 event.setCancelled(true);
                 player.sendMessage("\u00a7d" + item.getItemMeta().getDisplayName() + "\u00a77:");
                 for (String lore : item.getItemMeta().getLore()) player.sendMessage("- \u00a77" + lore);
             }
-        }
-    }
 
-    @EventHandler
-    public void onBlockBreak(BlockBreakEvent e) {
-        if (Math.abs(e.getBlock().getLocation().getX()) < 100 && Math.abs(e.getBlock().getLocation().getZ()) < 100)
-            return;
-        if (!YEUHLobby.getWarden().hasPlayerSigned(e.getPlayer().getName())) {
-            e.setCancelled(true);
-            e.getPlayer().sendMessage("\u00a7cRead the &l/rules \u00a7cbefore you can build here!");
-        }
-    }
-
-    @EventHandler
-    public void onBlockBreak(BlockPlaceEvent e) {
-        if (Math.abs(e.getBlock().getLocation().getX()) < 100 && Math.abs(e.getBlock().getLocation().getZ()) < 100)
-            return;
-        if (!YEUHLobby.getWarden().hasPlayerSigned(e.getPlayer().getName())) {
-            e.setCancelled(true);
-            e.getPlayer().sendMessage("\u00a7cRead the &l/rules \u00a7cbefore you can build here!");
+            if (FillItemFrameThread.waitingFor == null && FillItemFrameThread.task != null) {
+                FillItemFrameThread.waitingFor = itemFrame;
+                FillItemFrameThread.cont();
+            }
         }
     }
 
