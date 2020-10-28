@@ -36,6 +36,26 @@ public class ScoreKeeper {
         }
     }
 
+    public void removeStats(String name) {
+        if (cache.containsKey(name.toLowerCase())) cache.remove(name.toLowerCase());
+
+        while (s.hasNextLine()) {
+            String line = s.nextLine();
+
+            PlayerStats ps = PlayerStats.newFromParse(line);
+
+            // if it finds other players while looking for one in specifics, it adds them to
+            // the cache anyways
+            if (!cache.containsKey(ps.player)) cache.put(ps.player, ps);
+
+            if (ps.player.equals(name.toLowerCase())) {
+                // don't add it
+            }
+        }
+
+        // if it gets here, it wasn't in the queue so its fine
+    }
+
     public PlayerStats getStats(String name) { return getStats(name, false); }
 
     public PlayerStats getStats(String name, boolean create) {
@@ -71,13 +91,15 @@ public class ScoreKeeper {
         while (s.hasNextLine()) {
             String line = s.nextLine();
             PlayerStats ps = PlayerStats.newFromParse(line);
-            cache.put(ps.player, ps);
+            if (!cache.containsKey(ps.player)) cache.put(ps.player, ps);
         }
         s.close();
 
         // write everything in the cache
         try (FileWriter myWriter = new FileWriter(f, false)) {
-            for (Entry<String, PlayerStats> e : cache.entrySet()) { myWriter.write(e.getValue().toString() + "\n"); }
+            for (Entry<String, PlayerStats> e : cache.entrySet()) {
+                if (!e.getValue().isEmpty()) myWriter.write(e.getValue().toString() + "\n");
+            }
             myWriter.close();
         } catch (IOException e) {
             Bukkit.getLogger().warning("[YEUHLobby] Something went wrong when writing to userStats.txt!");
@@ -98,11 +120,44 @@ public class ScoreKeeper {
         killedStats.loseTo(killerRating, killer);
     }
 
-    public List<PlayerStats> top(String field, int amount) {
+    public void lowerRatings() {
+        // finish the scanner
+        while (s.hasNextLine()) {
+            String line = s.nextLine();
+            PlayerStats ps = PlayerStats.newFromParse(line);
+            if (!cache.containsKey(ps.player)) cache.put(ps.player, ps);
+        }
+        long rightNow = new Date().getTime();
 
-        PriorityQueue<PlayerStats> topList = new PriorityQueue<>((a, b) -> a.rating > b.rating ? 1 : -1);
+        for (PlayerStats ps : cache.values()) {
+            if (rightNow - ps.lastSeen > 24 * 3600 * 1000 && ps.rating > 50) {
+                ps.setRating(PlayerStats.getRatingFromElo(ps.getEloScore() - 1));
+                if (ps.rating < 50) ps.setRating(50);
+            }
+        }
+    }
+
+    public List<PlayerStats> top(String field, int amount) {
+        PriorityQueue<PlayerStats> topList = new PriorityQueue<>((a, b) -> {
+            try {
+                Object A = PlayerStats.class.getField(field).get(a);
+                Object B = PlayerStats.class.getField(field).get(b);
+
+                if (A instanceof Integer) { return ((Integer) A).intValue() > ((Integer) B).intValue() ? -1 : 1; }
+                if (A instanceof Double) { return ((Double) A).doubleValue() > ((Double) B).doubleValue() ? -1 : 1; }
+            } catch (Exception e) {}
+            throw new IllegalArgumentException("That field cannot be compared!");
+        });
+
+        List<PlayerStats> returnList = new LinkedList<>();
+
         for (PlayerStats ps : cache.values()) { topList.add(ps); }
 
-        return topList.stream().limit(amount).collect(Collectors.toList());
+        for (int i = 0; i < amount; i++) {
+            while (topList.peek().player.contains("-")) topList.poll();
+            returnList.add(topList.poll());
+        }
+
+        return returnList;
     }
 }

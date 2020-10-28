@@ -1,13 +1,14 @@
 package kern.listeners;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.Map.Entry;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.enchantments.Enchantment;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,6 +21,8 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import kern.YEUHLobby;
+import kern.Game;
+import kern.PlayerStats;
 
 public class GUIInventoryListener implements Listener {
 
@@ -48,8 +51,8 @@ public class GUIInventoryListener implements Listener {
         addButton(helpInventory, Material.BARRIER, 8, EXIT_NAME);
 
         addButton(helpInventory, Material.DIAMOND, 11, "\u00a7bServer Rules");
-        addButton(helpInventory, Material.LAVA_BUCKET, 12, "\u00a76Game Queue");
-        addButton(helpInventory, Material.BOW, 13, "\u00a7aPlayer Rating");
+        addButton(helpInventory, Material.LAVA_BUCKET, 12, "\u00a76Player List");
+        addButton(helpInventory, Material.BOW, 13, "\u00a7aPlayer Stats");
 
         ItemStack item;
 
@@ -70,8 +73,7 @@ public class GUIInventoryListener implements Listener {
     public static Inventory getRulesInventory(Player player) {
         Inventory rulesInventory = Bukkit.createInventory(null, 9, RULES_TITLE);
 
-        ItemStack item;
-        ItemMeta im;
+        addButton(rulesInventory, Material.BARRIER, 8, EXIT_NAME);
 
         addButton(rulesInventory, Material.DIAMOND_BLOCK, 3, "\u00a75(\u00a7d\u00a7l1\u00a75) \u00a7fDon't cheat!",
                 "\u00a77You will (probably) get", "\u00a77banned for doing so!");
@@ -79,27 +81,99 @@ public class GUIInventoryListener implements Listener {
                 "\u00a7fwe don't really care!");
         addButton(rulesInventory, Material.DIAMOND_BLOCK, 5, "\u00a75(\u00a7d\u00a7l3\u00a75) \u00a7fJust have fun!");
 
-        if (!YEUHLobby.getWarden().hasPlayerSigned(player.getName())) {
-            item = new ItemStack(Material.WRITABLE_BOOK);
-            im = item.getItemMeta();
-            im.setDisplayName("\u00a7fSign and \u00a7d/opt in");
-            im.setLore(Arrays.asList("\u00a7fto the game queue!"));
-            item.setItemMeta(im);
-        } else {
-            item = new ItemStack(Material.ENCHANTED_BOOK);
-            im = item.getItemMeta();
-            im.setDisplayName("\u00a7aYou have already signed!");
-            im.setLore(Arrays.asList("\u00a77Click to close menu."));
-            item.setItemMeta(im);
-        }
-        addButton(rulesInventory, item, 8);
-
         return rulesInventory;
     }
 
-    public static final String RATING_TITLE = "Your Player Rating";
+    public static final String STATS_TITLE = "\u00a7d\u00a7l\u00a7oYEUH \u00a7fStats:";
 
-    public static Inventory getRatingInventory(Player player) { return Bukkit.createInventory(null, 45, RATING_TITLE); }
+    public static Inventory getStatsInventory(String player) {
+        Inventory statsInventory = Bukkit.createInventory(null, 45, "\u00a75" + player + "\u00a7f's " + STATS_TITLE);
+        addButton(statsInventory, Material.BARRIER, 8, EXIT_NAME);
+
+        PlayerStats ps = YEUHLobby.getScoreKeeper().getStats(player);
+
+        ItemStack item;
+        ItemMeta im;
+
+        item = new ItemStack(Material.NETHERITE_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fPlayer Rating:");
+        im.setLore(Arrays.asList("\u00a76\u00a7l" + String.format("%.2f", ps.rating)));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 4);
+
+        item = new ItemStack(Material.APPLE);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fGames Played:");
+        im.setLore(Arrays.asList("\u00a7c\u00a7l" + ps.games));
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 12);
+        item = new ItemStack(Material.ENCHANTED_GOLDEN_APPLE);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fGames Won:");
+        im.setLore(Arrays.asList("\u00a7e\u00a7l" + ps.wins));
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 14);
+
+        item = new ItemStack(Material.DIAMOND_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fPlayers Killed:");
+        im.setLore(Arrays.asList("\u00a7b\u00a7l" + ps.playerKills));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 19);
+        item = new ItemStack(Material.IRON_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fBots Killed:");
+        im.setLore(Arrays.asList("\u00a77\u00a7l" + ps.botKills));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 21);
+        item = new ItemStack(Material.GOLDEN_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fMonsters Killed:");
+        im.setLore(Arrays.asList("\u00a76\u00a7l" + ps.mobKills));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 23);
+        item = new ItemStack(Material.WOODEN_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fAnimals Killed:");
+        im.setLore(Arrays.asList("\u00a76\u00a7l" + ps.animalKills));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 25);
+
+        item = new ItemStack(Material.BOW);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fTimes Killed by a Player:");
+        im.setLore(Arrays.asList("\u00a76\u00a7l" + ps.playerDeaths));
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 30);
+        item = new ItemStack(Material.RED_DYE);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7fTimes Killed by Environment:");
+        im.setLore(Arrays.asList("\u00a7c\u00a7l" + ps.envDeaths));
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 32);
+
+        item = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta skim = (SkullMeta) item.getItemMeta();
+        skim.setDisplayName("\u00a7fNemesis:");
+        if (ps.nemesis != null && !ps.nemesis.equalsIgnoreCase("null")) {
+            skim.setOwningPlayer(Bukkit.getOfflinePlayer(ps.nemesis));
+            skim.setLore(Arrays.asList("\u00a7c\u00a7l" + ps.nemesis, "\u00a7fTimes Killed:",
+                    "\u00a7c\u00a7l" + ps.nemesisKills));
+        } else {
+            skim.setLore(Arrays.asList("\u00a77\u00a7l" + player + " \u00a77doesn't have a nemesis!"));
+        }
+        item.setItemMeta(skim);
+        addButton(statsInventory, item, 40);
+
+        return statsInventory;
+
+    }
 
     public static final String PATRON_TITLE = "\u00a7d\u00a7l\u00a7oYEUH \u00a7fPatron Ranks:";
 
@@ -294,10 +368,17 @@ public class GUIInventoryListener implements Listener {
         return patronInventory;
     }
 
-    public static final String LIST_TITLE = "\u00a7d\u00a7l\u00a7oYEUH \u00a7fGame Queue:";
+    public static final String LIST_TITLE = "\u00a7d\u00a7l\u00a7oYEUH \u00a7fPlayer List:";
 
     public static Inventory getListInventory() {
-        List<Player> playerList = new ArrayList<>(Bukkit.getOnlinePlayers());
+        Map<OfflinePlayer, String> playerList = new HashMap<>();
+
+        for (Player p : Bukkit.getOnlinePlayers()) { playerList.put(p, "\u00a7fIn the creative lobby"); }
+        for (Game g : YEUHLobby.getPlugin().getGames()) {
+            for (UUID uuid : g.getPlayers()) {
+                playerList.put(Bukkit.getOfflinePlayer(uuid), "\u00a7fIn game: \u00a7d\u00a7l" + g.server);
+            }
+        }
 
         Inventory listInventory = Bukkit.createInventory(null, (int) (Math.ceil(playerList.size() / 7.)) * 9,
                 LIST_TITLE);
@@ -305,21 +386,16 @@ public class GUIInventoryListener implements Listener {
         addButton(listInventory, Material.BARRIER, 8, EXIT_NAME);
 
         int i = 0;
-        for (Player p : playerList) {
+        for (Entry<OfflinePlayer, String> p : playerList.entrySet()) {
             ItemStack item = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta im = (SkullMeta) item.getItemMeta();
-            im.setOwningPlayer(Bukkit.getOfflinePlayer(p.getUniqueId()));
-            im.setDisplayName("\u00a7d" + p.getDisplayName());
-            if (!YEUHLobby.getWarden().hasPlayerSigned(p.getName())) {
-                im.setLore(Arrays.asList("\u00a7cHas not signed the \u00a7l/rules\u00a7c!"));
-            } else if (PlayerListener.inQueue(p)) {
-                im.setLore(Arrays.asList("\u00a7fIn the game queue"));
-            } else if (PlayerListener.hasQueueListener(p)) {
-                im.setLore(Arrays
-                        .asList("\u00a7fWaiting for \u00a7d" + PlayerListener.getQueueListener(p) + " \u00a7fplayers"));
+            im.setOwningPlayer(p.getKey());
+            if (p.getKey() instanceof Player) {
+                im.setDisplayName("\u00a7d" + ((Player) p.getKey()).getDisplayName());
             } else {
-                im.setLore(Arrays.asList("\u00a77Opted out of the game queue"));
+                im.setDisplayName("\u00a7d" + p.getKey().getName());
             }
+            im.setLore(Arrays.asList(p.getValue()));
             item.setItemMeta(im);
 
             while (i % 9 > 7) i++;
@@ -360,7 +436,7 @@ public class GUIInventoryListener implements Listener {
                         break;
                     case BOW:
                         e.getView().close();
-                        Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "rating");
+                        Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "stats");
                         break;
                     case NETHERITE_SWORD:
                         e.getView().close();
@@ -379,14 +455,11 @@ public class GUIInventoryListener implements Listener {
                     return;
                 }
                 e.setCancelled(true);
+
                 item = e.getCurrentItem();
                 if (item == null) return;
                 switch (item.getType()) {
-                    case WRITABLE_BOOK:
-                        YEUHLobby.getWarden().sign(player.getName());
-                        player.openInventory(getRulesInventory(player));
-                        break;
-                    case ENCHANTED_BOOK:
+                    case BARRIER:
                         e.getView().close();
                         break;
                     default:
@@ -398,8 +471,8 @@ public class GUIInventoryListener implements Listener {
                     if (e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) e.setCancelled(true);
                     return;
                 }
-
                 e.setCancelled(true);
+
                 item = e.getCurrentItem();
                 if (item == null) return;
                 switch (item.getType()) {
@@ -432,6 +505,25 @@ public class GUIInventoryListener implements Listener {
             default:
                 // continue
 
+        }
+
+        if (e.getView().getTitle().endsWith(STATS_TITLE)) {
+            if (e.getRawSlot() >= e.getView().getTopInventory().getSize()) {
+                if (e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) e.setCancelled(true);
+                return;
+            }
+            e.setCancelled(true);
+
+            item = e.getCurrentItem();
+            if (item == null) return;
+            switch (item.getType()) {
+                case BARRIER:
+                    e.getView().close();
+                    break;
+                case PLAYER_HEAD:
+                    break;
+                default:
+            }
         }
 
     }

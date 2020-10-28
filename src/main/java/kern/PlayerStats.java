@@ -1,22 +1,27 @@
 package kern;
 
+import java.util.Date;
+
 import org.bukkit.Bukkit;
 
 public class PlayerStats {
-    String player;
+    public String player;
     public double rating;
-    int playerKills;
-    int botKills;
-    int mobKills;
-    int animalKills;
-    int playerDeaths;
-    int envDeaths;
+    public int playerKills;
+    public int botKills;
+    public int mobKills;
+    public int animalKills;
+    public int playerDeaths;
+    public int envDeaths;
     public int wins;
-    int games;
-    String nemesis;
+    public int games;
+    public String nemesis;
     String lastKilledBy;
-    int nemesisKills;
+    public int nemesisKills;
     int lastKilledByKills;
+    long lastSeen;
+
+    private static int K = 40;
 
     public PlayerStats(String player) {
         if (player != null) this.player = player.toLowerCase();
@@ -24,6 +29,7 @@ public class PlayerStats {
         rating = 50;
         playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = 0;
         nemesis = lastKilledBy = null;
+        seen();
     }
 
     public void reset() {
@@ -32,12 +38,21 @@ public class PlayerStats {
         nemesis = lastKilledBy = null;
     }
 
+    public boolean isEmpty() {
+        return rating == 50 && playerKills + botKills + mobKills + animalKills + playerDeaths + envDeaths + wins + games
+                + nemesisKills + lastKilledByKills == 0;
+    }
+
+    public void seen() { lastSeen = new Date().getTime(); }
+
     public static PlayerStats newFromParse(String input) {
         String[] fields = input.split(":");
+        if (fields.length < 2) throw new IllegalArgumentException("Requires at least 2 inputs!");
+
         PlayerStats ps = new PlayerStats(fields[0]);
         ps.rating = Double.parseDouble(fields[1]);
         if (fields.length == 2) return ps;
-        if (fields.length != 14) throw new IllegalArgumentException("Requires 14 inputs!");
+        if (fields.length < 14) throw new IllegalArgumentException("Requires at least 14 inputs!");
 
         ps.playerKills = Integer.parseInt(fields[2]);
         ps.botKills = Integer.parseInt(fields[3]);
@@ -51,11 +66,19 @@ public class PlayerStats {
         ps.lastKilledBy = fields[11];
         ps.nemesisKills = Integer.parseInt(fields[12]);
         ps.lastKilledByKills = Integer.parseInt(fields[13]);
-        return ps;
+        if (fields.length == 14) return ps;
+        // if (fields.length < 15) throw new IllegalArgumentException("Requires at least
+        // 14 inputs!");
+
+        ps.lastSeen = Long.parseLong(fields[14]);
+        if (fields.length == 15) return ps;
+        throw new IllegalArgumentException("Wrong amount of inputs");
     }
 
     public void loseTo(double opponentScore, String opponent) {
-        if (opponent != null) {
+
+        if (opponent != null && !opponent.equalsIgnoreCase("YEUH-ANIMAL")
+                && !opponent.equalsIgnoreCase("YEUH-MONSTER")) {
             if (lastKilledBy != null && lastKilledBy.equals(opponent)) lastKilledByKills++;
             else lastKilledByKills = 1;
             if (!opponent.equalsIgnoreCase("YEUH-BOT")) lastKilledBy = opponent;
@@ -70,7 +93,7 @@ public class PlayerStats {
 
         games++;
 
-        setRating(getRatingFromElo(getEloScore() - 10 * expected(opponentScore)));
+        setRating(getRatingFromElo(getEloScore() - K * expected(opponentScore)));
     }
 
     public void winTo(double opponentScore, String opponent) {
@@ -89,17 +112,15 @@ public class PlayerStats {
             if (opponent.equalsIgnoreCase("YEUH-BOT")) botKills++;
             else if (opponent.equalsIgnoreCase("YEUH-MONSTER")) {
                 mobKills++;
-                return;
             } else if (opponent.equalsIgnoreCase("YEUH-ANIMAL")) {
                 animalKills++;
-                return;
             } else playerKills++;
         } else {
             wins++;
             games++;
         }
 
-        setRating(getRatingFromElo(getEloScore() + multiplier * 10 * (1 - expected(opponentScore))));
+        setRating(getRatingFromElo(getEloScore() + multiplier * K * (1 - expected(opponentScore))));
     }
 
     private double expected(double opponentScore) {
@@ -138,7 +159,7 @@ public class PlayerStats {
     public String toString() {
         return player + ":" + rating + ":" + playerKills + ":" + botKills + ":" + mobKills + ":" + animalKills + ":"
                 + playerDeaths + ":" + envDeaths + ":" + wins + ":" + games + ":" + nemesis + ":" + lastKilledBy + ":"
-                + nemesisKills + ":" + lastKilledByKills;
+                + nemesisKills + ":" + lastKilledByKills + ":" + lastSeen;
     }
 
 }

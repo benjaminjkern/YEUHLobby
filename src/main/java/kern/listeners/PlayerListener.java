@@ -28,11 +28,13 @@ public class PlayerListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
+        YEUHLobby.getScoreKeeper().getStats(player.getName()).seen();
+
         String joinMessage = "";
-        boolean canGoBackToGame = false;
+
         for (Game g : YEUHLobby.getPlugin().getGames()) {
-            if (g.getPlayers().contains(player.getName())) {
-                g.getPlayers().remove(player.getName());
+            if (g.getPlayers().contains(player.getUniqueId())) {
+                g.getPlayers().remove(player.getUniqueId());
                 joinMessage = "\u00a70(\u00a7d\u00a7l<\u00a70) \u00a77" + player.getDisplayName();
             }
 
@@ -74,6 +76,9 @@ public class PlayerListener implements Listener {
                 } else if (!YEUHLobby.getPlugin().getPlayingGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
                             + "There are active games running! If you would like to spectate one, use \u00a7d/spectate\u00a7f!");
+                } else {
+                    player.sendMessage(YEUHLobby.PREFIX
+                            + "Use \u00a7d/join \u00a7fto start playing \u00a7d\u00a7lYEUH BATTLE ROYALE\u00a7f!");
                 }
             }
         }.runTaskTimer(YEUHLobby.getPlugin(), 20 * 5, 20 * 60 * 5);

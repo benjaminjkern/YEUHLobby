@@ -15,7 +15,6 @@ import kern.listeners.*;
 public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 
 	private static YEUHLobby plugin;
-	private static Warden warden;
 	private static ScoreKeeper sk;
 
 	public static final String PREFIX = "\u00a75(\u00a7d\u00a7lYEUH\u00a75) \u00a7f";
@@ -28,15 +27,16 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	public void onEnable() {
 		plugin = this;
 		sk = new ScoreKeeper();
-		warden = new Warden();
 		games = new ArrayList<>();
 
 		this.getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
 		this.getServer().getMessenger().registerIncomingPluginChannel(this, "BungeeCord", this);
 
 		Bukkit.getScheduler().runTaskAsynchronously(plugin, new ServerSocketThread());
-		Bukkit.getScheduler().runTaskAsynchronously(plugin, new CheckServersThread());
 		Bukkit.getScheduler().runTask(plugin, new DeleteEntitiesThread());
+		Date d = new Date();
+		Bukkit.getScheduler().runTaskLater(plugin, new LowerRatingsThread(), (long) (20
+				* (((24 + d.getHours()) % 24) * 3600 + ((60 - d.getMinutes()) % 60) * 60 + (60 - d.getSeconds()))));
 
 		Bukkit.getServer().getPluginManager().registerEvents(new PlayerListener(), plugin);
 		Bukkit.getServer().getPluginManager().registerEvents(new GUIInventoryListener(), plugin);
@@ -45,7 +45,6 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 		getCommand("spectate").setExecutor(new SpectateCommand());
 		getCommand("rating").setExecutor(new RatingCommand());
 		getCommand("stats").setExecutor(new StatsCommand(sk));
-		getCommand("opt").setExecutor(new OptCommand());
 		getCommand("plugin").setExecutor(new PluginCommand());
 		getCommand("help").setExecutor(new HelpCommand());
 		getCommand("rules").setExecutor(new RulesCommand());
@@ -65,7 +64,6 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	@Override
 	public void onDisable() {
 		sk.storeData();
-		warden.save();
 		for (Game g : games) {
 			g.disable(false);
 			games.remove(g);
@@ -80,14 +78,11 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	}
 
 	public List<Game> getStartingGames() {
-		return games.stream()
-				.filter(g -> g.gameState.equals("STARTING") || (g.gameState.equals("WAITING") && g.currentSize > 0))
+		return games.stream().filter(g -> g.gameState.equals("WAITING") && g.currentSize > 0)
 				.collect(Collectors.toList());
 	}
 
 	public List<Game> getGames() { return games; }
-
-	public static Warden getWarden() { return warden; }
 
 	public static ScoreKeeper getScoreKeeper() { return sk; }
 
