@@ -1,16 +1,21 @@
 package kern.commands;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import kern.Game;
 import kern.YEUHLobby;
 
 public class JoinCommand implements CommandExecutor {
+
+    private static Set<String> joinTwice = new HashSet<>();
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
@@ -27,7 +32,7 @@ public class JoinCommand implements CommandExecutor {
             // bad code, but before doing anything else see if the player is supposed to be
             // part of a game and send them to that game
             for (Game g : playingGames) {
-                if (g.getDisconnectedPlayers().contains(sender.getName())) {
+                if (g.getAlive().contains(sender.getName())) {
                     g.sendPlayerToGame(player);
                     return true;
                 }
@@ -36,7 +41,8 @@ public class JoinCommand implements CommandExecutor {
             if (startingGames.isEmpty()) {
 
                 if (openGames.isEmpty()) {
-                    sender.sendMessage("\u00a7cThere aren't any games for you to join at the moment!");
+                    sender.sendMessage(
+                            "\u00a7cThere aren't any available games for you to join at the moment! Please wait for one to be ready!");
                     if (!playingGames.isEmpty()) {
                         sender.sendMessage(
                                 "\u00a7cUse \u00a7l/spectate \u00a7cif you would like to spectate an active game!");

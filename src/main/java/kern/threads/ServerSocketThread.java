@@ -1,5 +1,6 @@
 package kern.threads;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
@@ -12,18 +13,21 @@ import kern.YEUHLobby;
 
 public class ServerSocketThread implements Runnable {
 
+	public ServerSocket listener;
+
 	@Override
 	public void run() {
-		try (ServerSocket listener = new ServerSocket(58901)) {
+		try {
+			listener = new ServerSocket(58901);
 			ExecutorService pool = Executors.newFixedThreadPool(YEUHLobby.MAX_GAMES + 1);
-			while (!listener.isClosed()) {
+			while (!listener.isClosed() && YEUHLobby.getPlugin().isEnabled()) {
 				Socket incomingGame = listener.accept();
 				Game g = new Game(incomingGame);
 				addGame(g);
 				pool.execute(g);
 			}
-		} catch (Exception e) {
-			Bukkit.getLogger().warning(e.getStackTrace()[0].toString());
+		} catch (IOException e) {
+			// Bukkit.getLogger().warning(e.getStackTrace()[0].toString());
 		}
 	}
 

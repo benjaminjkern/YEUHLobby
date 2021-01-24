@@ -1,5 +1,6 @@
 package kern.threads;
 
+import java.util.Queue;
 import java.util.Scanner;
 
 import org.bukkit.Bukkit;
@@ -16,14 +17,14 @@ import kern.YEUHLobby;
 public class FillItemFrameThread implements Runnable {
 
     YamlConfiguration yf;
-    Scanner s;
+    Queue<String> s;
     Player executor;
     String scenario;
     private int count;
     public static FillItemFrameThread task;
     public static ItemFrame waitingFor;
 
-    public FillItemFrameThread(Player executor, YamlConfiguration yf, Scanner s) {
+    public FillItemFrameThread(Player executor, YamlConfiguration yf, Queue<String> s) {
         task = this;
         this.yf = yf;
         this.s = s;
@@ -44,7 +45,7 @@ public class FillItemFrameThread implements Runnable {
             // fill item frame
             ItemStack item = new ItemStack(Material.valueOf(yf.getString(scenario + ".item", "dirt").toUpperCase()));
             ItemMeta im = item.getItemMeta();
-            im.setDisplayName((count < 24 ? "\u00a7d" : "\u00a76NEW: ")
+            im.setDisplayName((count < 21 || count >= 24 ? "\u00a7d" : "\u00a76NEW: ")
                     + yf.getString(scenario + ".name", "Couldn't find name!"));
             im.setLore(yf.getStringList(scenario + ".description"));
             item.setItemMeta(im);
@@ -54,8 +55,8 @@ public class FillItemFrameThread implements Runnable {
             count++;
         }
 
-        if (s.hasNextLine()) {
-            scenario = "scenarios." + s.nextLine().toLowerCase();
+        if (!s.isEmpty()) {
+            scenario = "scenarios." + s.poll().toLowerCase();
             executor.sendMessage("Right click item frame for " + scenario);
             waitingFor = null;
         } else {

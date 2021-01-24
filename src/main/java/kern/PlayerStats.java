@@ -4,6 +4,8 @@ import java.util.Date;
 
 import org.bukkit.Bukkit;
 
+import kern.listeners.PlayerListener;
+
 public class PlayerStats {
     public String player;
     public double rating;
@@ -20,8 +22,16 @@ public class PlayerStats {
     public int nemesisKills;
     int lastKilledByKills;
     long lastSeen;
+    public double experience;
+    public int rank;
 
-    private static int K = 40;
+    // private static int K = 40;
+    public static final double K_KILL = 13.899276855538119;
+    public static final double K_GAME = 7.414368802344478;
+
+    private static final double RANK_CONST = Math.log10(9) * 400;
+
+    public static double K(int total) { return 800 * Math.log10(1.5) / (double) (total - 1); }
 
     public PlayerStats(String player) {
         if (player != null) this.player = player.toLowerCase();
@@ -29,6 +39,8 @@ public class PlayerStats {
         rating = 50;
         playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = 0;
         nemesis = lastKilledBy = null;
+        experience = 0;
+        rank = 0;
         seen();
     }
 
@@ -36,11 +48,13 @@ public class PlayerStats {
         rating = 50;
         playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = 0;
         nemesis = lastKilledBy = null;
+        experience = 0;
+        rank = 0;
     }
 
     public boolean isEmpty() {
         return rating == 50 && playerKills + botKills + mobKills + animalKills + playerDeaths + envDeaths + wins + games
-                + nemesisKills + lastKilledByKills == 0;
+                + nemesisKills + lastKilledByKills + experience == 0;
     }
 
     public void seen() { lastSeen = new Date().getTime(); }
@@ -67,38 +81,44 @@ public class PlayerStats {
         ps.nemesisKills = Integer.parseInt(fields[12]);
         ps.lastKilledByKills = Integer.parseInt(fields[13]);
         if (fields.length == 14) return ps;
-        // if (fields.length < 15) throw new IllegalArgumentException("Requires at least
-        // 14 inputs!");
 
         ps.lastSeen = Long.parseLong(fields[14]);
         if (fields.length == 15) return ps;
+
+        ps.experience = Double.parseDouble(fields[15]);
+        if (fields.length == 16) return ps;
+
+        ps.rank = Integer.parseInt(fields[16]);
+        if (fields.length == 17) return ps;
+
         throw new IllegalArgumentException("Wrong amount of inputs");
     }
 
-    public void loseTo(double opponentScore, String opponent) {
-
+    public void loseTo(double opponentElo, String opponent, double K) {
+        // shouldn't ever call with yeuh-animal or monster
         if (opponent != null && !opponent.equalsIgnoreCase("YEUH-ANIMAL")
                 && !opponent.equalsIgnoreCase("YEUH-MONSTER")) {
-            if (lastKilledBy != null && lastKilledBy.equals(opponent)) lastKilledByKills++;
-            else lastKilledByKills = 1;
-            if (!opponent.equalsIgnoreCase("YEUH-BOT")) lastKilledBy = opponent;
+            if (!opponent.equalsIgnoreCase("YEUH-BOT")) {
+                if (lastKilledBy != null && lastKilledBy.equals(opponent)) lastKilledByKills++;
+                else lastKilledByKills = 1;
 
-            if ((nemesis == null || lastKilledByKills >= nemesisKills) && !opponent.equalsIgnoreCase("YEUH-BOT")) {
-                nemesis = opponent;
-                nemesisKills = lastKilledByKills;
-            } else if (nemesis != null && nemesis.equals(opponent)) { nemesisKills++; }
+                lastKilledBy = opponent;
 
+                if (nemesis == null || lastKilledByKills >= nemesisKills) {
+                    nemesis = opponent;
+                    nemesisKills = lastKilledByKills;
+                } else if (nemesis.equals(opponent)) nemesisKills++;
+            }
             playerDeaths++;
         } else envDeaths++;
 
-        games++;
-
-        setRating(getRatingFromElo(getEloScore() - K * expected(opponentScore)));
+        setRating(getRatingFromElo(getEloScore() - K * expected(opponentElo)));
     }
 
-    public void winTo(double opponentScore, String opponent) {
+    public void winTo(double opponentElo, String opponent, double K) {
 
         double multiplier = 1;
+
         if (opponent != null) {
             if (nemesis != null && opponent.equals(nemesis)) {
                 multiplier *= 2;
@@ -112,30 +132,38 @@ public class PlayerStats {
             if (opponent.equalsIgnoreCase("YEUH-BOT")) botKills++;
             else if (opponent.equalsIgnoreCase("YEUH-MONSTER")) {
                 mobKills++;
+                return;
             } else if (opponent.equalsIgnoreCase("YEUH-ANIMAL")) {
                 animalKills++;
-            } else playerKills++;
-        } else {
-            wins++;
-            games++;
+                return;
+            } else {
+                playerKills++;
+                experience += YEUHLobby.getScoreKeeper().getStats(opponent).getLevel() * 10;
+            }
         }
 
-        setRating(getRatingFromElo(getEloScore() + multiplier * K * (1 - expected(opponentScore))));
+        setRating(getRatingFromElo(getEloScore() + multiplier * K * (1 - expected(opponentElo))));
     }
 
-    private double expected(double opponentScore) {
-        return (100 * rating - rating * opponentScore)
-                / (100 * rating + 100 * opponentScore - 2 * rating * opponentScore);
-
+    public void setRank(int rank) {
+        if (this.rank == rank) return;
+        if (rank > this.rank) PlayerListener.upRank(player);
+        else PlayerListener.downRank(player);
+        setRating(getRatingFromElo(getEloScore(), rank));
+        this.rank = rank;
     }
 
-    public void environmentDeath() { loseTo(50, null); }
+    public int getLevel() { return (int) Math.pow(experience / 50, 1 / 3.) + 1; }
 
-    public void winGame() { winTo(50, null); }
+    public double expected(double opponentElo) { return 1 / (1 + Math.pow(10, (opponentElo - getEloScore()) / 400.)); }
 
-    public static double getRatingFromElo(double eloScore) { return 100 / (1 + Math.pow(10, (1000 - eloScore) / 400)); }
+    public double getRatingFromElo(double eloScore) { return getRatingFromElo(eloScore, rank); }
 
-    public double getEloScore() { return 1000 - 400 * Math.log10(100 / rating - 1); }
+    public static double getRatingFromElo(double eloScore, int sampleRank) {
+        return 100 / (1 + Math.pow(10, ((1000 + sampleRank * RANK_CONST) - eloScore) / 400));
+    }
+
+    public double getEloScore() { return (1000 + rank * RANK_CONST) - 400 * Math.log10(100 / rating - 1); }
 
     public double setRating(double newRating) {
         if (player == null) return 50;
@@ -143,23 +171,65 @@ public class PlayerStats {
         double oldScore = rating;
         rating = Math.max(0, Math.min(100, newRating));
 
+        int oldLevel = getLevel();
+        if (rating > oldScore) experience += rating - oldScore;
+        if (getLevel() > oldLevel) PlayerListener.sendLevelUpMessage(player);
+
+        if (rating < 10 && rank > 0) setRank(rank - 1);
+        if (rating >= 90) setRank(rank + 1);
+
         if (oldScore != rating) {
             try {
                 Bukkit.getPlayerExact(player)
-                        .sendMessage("Your Player Rating has been updated to \u00a76" + String.format("%.2f", rating));
+                        .sendMessage("Your Player Rating has been updated to \u00a76" + ratingString());
             } catch (NullPointerException e) {}
-
-            // Bukkit.getLogger().info(player + "'s new score is " + rating);
         }
         return rating;
     }
 
     public double addRating(double toAdd) { return setRating(rating + toAdd); }
 
+    public String rankingColor() {
+        switch (rank) {
+            case 1:
+                return "\u00a7c";
+            case 2:
+                return "\u00a7a";
+            case 3:
+                return "\u00a7b";
+            case 4:
+                return "\u00a75";
+            case 5:
+                return "\u00a7d\u00a7l";
+            default:
+                return "\u00a76";
+        }
+    }
+
+    public String getRankString() {
+        switch (rank) {
+            case 1:
+                return "Veteran";
+            case 2:
+                return "Elite";
+            case 3:
+                return "Supreme";
+            case 4:
+                return "Master";
+            case 5:
+                return "Legendary";
+            default:
+                return "Regular";
+        }
+
+    }
+
+    public String ratingString() { return String.format(rankingColor() + "%.2f", rating); }
+
     public String toString() {
         return player + ":" + rating + ":" + playerKills + ":" + botKills + ":" + mobKills + ":" + animalKills + ":"
                 + playerDeaths + ":" + envDeaths + ":" + wins + ":" + games + ":" + nemesis + ":" + lastKilledBy + ":"
-                + nemesisKills + ":" + lastKilledByKills + ":" + lastSeen;
+                + nemesisKills + ":" + lastKilledByKills + ":" + lastSeen + ":" + experience + ":" + rank;
     }
 
 }

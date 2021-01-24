@@ -1,5 +1,6 @@
 package kern;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,8 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 
 	public static final int MAX_GAMES = 2;
 
+	private ServerSocketThread socketThread;
+
 	@Override
 	public void onEnable() {
 		plugin = this;
@@ -32,14 +35,18 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 		this.getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
 		this.getServer().getMessenger().registerIncomingPluginChannel(this, "BungeeCord", this);
 
-		Bukkit.getScheduler().runTaskAsynchronously(plugin, new ServerSocketThread());
-		Bukkit.getScheduler().runTask(plugin, new DeleteEntitiesThread());
 		Date d = new Date();
-		Bukkit.getScheduler().runTaskLater(plugin, new LowerRatingsThread(), (long) (20
-				* (((24 + d.getHours()) % 24) * 3600 + ((60 - d.getMinutes()) % 60) * 60 + (60 - d.getSeconds()))));
+		socketThread = new ServerSocketThread();
+		Bukkit.getScheduler().runTaskAsynchronously(plugin, socketThread);
+		Bukkit.getScheduler().runTask(plugin, new DeleteEntitiesThread());
+		Bukkit.getScheduler().runTaskLater(plugin, new LowerRatingsThread(),
+				(long) (20 * ((24 - d.getHours()) * 3600 + (60 - d.getMinutes()) * 60 + (60 - d.getSeconds()))));
+		Bukkit.getScheduler().runTaskLater(plugin, () -> sk.updateBoards(), 20 * 60);
 
 		Bukkit.getServer().getPluginManager().registerEvents(new PlayerListener(), plugin);
 		Bukkit.getServer().getPluginManager().registerEvents(new GUIInventoryListener(), plugin);
+		Bukkit.getServer().getPluginManager().registerEvents(new CommandItemListener(), plugin);
+		Bukkit.getServer().getPluginManager().registerEvents(new CreativeListener(), plugin);
 
 		getCommand("games").setExecutor(new GamesCommand());
 		getCommand("spectate").setExecutor(new SpectateCommand());
@@ -50,10 +57,13 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 		getCommand("rules").setExecutor(new RulesCommand());
 		getCommand("discord").setExecutor(new DiscordCommand());
 		getCommand("updatescenarioboard").setExecutor(new UpdateScenarioBoardCommand());
+		getCommand("updatetopboards").setExecutor(new UpdateTopBoardsCommand());
 		getCommand("list").setExecutor(new ListCommand());
 		getCommand("join").setExecutor(new JoinCommand());
 		getCommand("fakeleave").setExecutor(new FakeLeaveCommand());
 		getCommand("patreon").setExecutor(new PatreonCommand());
+		getCommand("member").setExecutor(new MemberCommand());
+		getCommand("removeallentities").setExecutor(new RemoveAllCommand());
 	}
 
 	@Override
@@ -64,10 +74,15 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	@Override
 	public void onDisable() {
 		sk.storeData();
-		for (Game g : games) {
-			g.disable(false);
-			games.remove(g);
-		}
+		try {
+			socketThread.listener.close();
+		} catch (IOException e) {}
+		try {
+			for (Game g : games) {
+				g.disable(false);
+				games.remove(g);
+			}
+		} catch (ConcurrentModificationException e) {}
 	}
 
 	public List<Game> getOpenGames() { return games.stream().filter(g -> g.acceptingNew).collect(Collectors.toList()); }
@@ -87,5 +102,14 @@ public class YEUHLobby extends JavaPlugin implements PluginMessageListener {
 	public static ScoreKeeper getScoreKeeper() { return sk; }
 
 	public static YEUHLobby getPlugin() { return plugin; }
+
+	public static void broadcastInfoMessage(String s, String perm) {
+		Bukkit.getOnlinePlayers()
+				.forEach(player -> {
+					if (perm.isEmpty() || player.hasPermission(perm)) player.sendMessage(YEUHLobby.PREFIX + s);
+				});
+	}
+
+	public static void broadcastInfoMessage(String s) { broadcastInfoMessage(s, ""); }
 
 }

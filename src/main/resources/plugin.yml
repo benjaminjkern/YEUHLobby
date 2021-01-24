@@ -34,6 +34,9 @@ commands:
   updatescenarioboard:
     description: Update the scenario board.
     usage: /<command>
+  updatetopboards:
+    description: Update the top player boards.
+    usage: /<command>
   list:
     description: List all players online
     usage: /<command>
@@ -45,4 +48,10 @@ commands:
     usage: /<command>
   patreon:
     description: Shows patreon info!
+    usage: /<command>
+  member:
+    description: Shows Member info!
+    usage: /<command>
+  removeallentities:
+    description: removes all entites
     usage: /<command>

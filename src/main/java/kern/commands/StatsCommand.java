@@ -34,6 +34,8 @@ public class StatsCommand implements CommandExecutor {
                 return set(sender, Arrays.copyOfRange(args, 1, args.length));
             case "top":
                 return top(sender, Arrays.copyOfRange(args, 1, args.length));
+            case "bottom":
+                return bottom(sender, Arrays.copyOfRange(args, 1, args.length));
             default:
         }
         return showStats(sender, args);
@@ -41,8 +43,8 @@ public class StatsCommand implements CommandExecutor {
 
     private boolean rating(CommandSender sender, String... args) {
         if (args.length == 0) return rating(sender, sender.getName());
-        if (args.length == 1) sender.sendMessage(
-                args[0] + "'s player rating is: \u00a76" + String.format("%.2f", sk.getStats(args[0]).rating));
+        if (args.length == 1)
+            sender.sendMessage(args[0] + "'s player rating is: \u00a76" + sk.getStats(args[0]).ratingString());
         switch (args[0].toLowerCase()) {
             case "addelo":
                 return addEloPlayerRating(sender, Arrays.copyOfRange(args, 1, args.length));
@@ -107,7 +109,7 @@ public class StatsCommand implements CommandExecutor {
         if (!sender.hasPermission("YEUHLobby.stats.set")) return noPerms(sender);
         if (args.length != 2) return false;
         PlayerStats ps = sk.getStats(args[0]);
-        ps.setRating(PlayerStats.getRatingFromElo(ps.getEloScore() + Double.parseDouble(args[1])));
+        ps.setRating(ps.getRatingFromElo(ps.getEloScore() + Double.parseDouble(args[1])));
 
         boolean found = false;
         for (Game g : YEUHLobby.getPlugin().getGames()) {
@@ -145,9 +147,40 @@ public class StatsCommand implements CommandExecutor {
         int i = 1;
         try {
             for (PlayerStats ps : sk.top(field, 10)) {
-                Object value = PlayerStats.class.getField(field).get(ps);
-                if (value instanceof Double) value = "\u00a76" + String.format("%.2f", value);
-                else value = "\u00a7d" + value;
+                Object value;
+                if (field.equals("rating")) {
+                    value = ps.ratingString();
+                } else {
+                    value = PlayerStats.class.getField(field).get(ps);
+                    if (value instanceof Double) value = "\u00a76" + String.format("%.2f", value);
+                    else value = "\u00a7d" + value;
+                }
+                sender.sendMessage("\u00a75(\u00a7d\u00a7l" + i + "\u00a75) \u00a7f" + ps.player + ": " + value);
+                i++;
+            }
+        } catch (Exception e) {
+            sender.sendMessage("\u00a7cField \u00a7l" + field + " \u00a7ccannot be ranked!");
+        }
+        return true;
+    }
+
+    private boolean bottom(CommandSender sender, String... args) {
+        String field = "rating";
+        if (args.length > 0) field = args[0];
+
+        sender.sendMessage(YEUHLobby.PREFIX + "Bottom " + field + (field.endsWith("s") ? "" : "s") + ":");
+
+        int i = 1;
+        try {
+            for (PlayerStats ps : sk.bottom(field, 10)) {
+                Object value;
+                if (field.equals("rating")) {
+                    value = ps.ratingString();
+                } else {
+                    value = PlayerStats.class.getField(field).get(ps);
+                    if (value instanceof Double) value = "\u00a76" + String.format("%.2f", value);
+                    else value = "\u00a7d" + value;
+                }
                 sender.sendMessage("\u00a75(\u00a7d\u00a7l" + i + "\u00a75) \u00a7f" + ps.player + ": " + value);
                 i++;
             }

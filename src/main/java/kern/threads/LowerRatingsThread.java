@@ -11,9 +11,11 @@ public class LowerRatingsThread implements Runnable {
     public void run() {
         Bukkit.getLogger().info("[YEUHLobby] Updating Ratings...");
         YEUHLobby.getScoreKeeper().lowerRatings();
+        YEUHLobby.getScoreKeeper().updateBoards();
+        YEUHLobby.getScoreKeeper().getStats("YEUH-BOT").reset();
         YEUHLobby.getScoreKeeper().storeData();
 
-        Bukkit.getScheduler().runTaskLater(YEUHLobby.getPlugin(), task, 20 * 24 * 3600);
+        Bukkit.getScheduler().runTaskLater(YEUHLobby.getPlugin(), task, 20 * 24 * 60 * 60);
 
     }
 

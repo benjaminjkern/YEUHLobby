@@ -52,7 +52,7 @@ public class GUIInventoryListener implements Listener {
 
         addButton(helpInventory, Material.DIAMOND, 11, "\u00a7bServer Rules");
         addButton(helpInventory, Material.LAVA_BUCKET, 12, "\u00a76Player List");
-        addButton(helpInventory, Material.BOW, 13, "\u00a7aPlayer Stats");
+        addButton(helpInventory, Material.APPLE, 13, "\u00a7cBecome a Member!");
 
         ItemStack item;
 
@@ -95,13 +95,30 @@ public class GUIInventoryListener implements Listener {
         ItemStack item;
         ItemMeta im;
 
+        item = new ItemStack(Material.DIAMOND_SWORD);
+        im = item.getItemMeta();
+        im.setDisplayName("\u00a7d\u00a7lYEUH \u00a7fLevel:");
+        im.setLore(Arrays.asList("\u00a7b\u00a7l" + String.format("%d", ps.getLevel())));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 2);
+
         item = new ItemStack(Material.NETHERITE_SWORD);
         im = item.getItemMeta();
         im.setDisplayName("\u00a7fPlayer Rating:");
-        im.setLore(Arrays.asList("\u00a76\u00a7l" + String.format("%.2f", ps.rating)));
+        im.setLore(Arrays.asList("\u00a7l" + ps.ratingString()));
         im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(im);
         addButton(statsInventory, item, 4);
+
+        item = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta skim = (SkullMeta) item.getItemMeta();
+        skim.setDisplayName("\u00a7fRank:");
+        skim.setOwningPlayer(Bukkit.getOfflinePlayer(player));
+        im.setLore(Arrays.asList(ps.rankingColor() + ps.getRankString()));
+        im.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+        item.setItemMeta(im);
+        addButton(statsInventory, item, 6);
 
         item = new ItemStack(Material.APPLE);
         im = item.getItemMeta();
@@ -159,7 +176,7 @@ public class GUIInventoryListener implements Listener {
         addButton(statsInventory, item, 32);
 
         item = new ItemStack(Material.PLAYER_HEAD);
-        SkullMeta skim = (SkullMeta) item.getItemMeta();
+        skim = (SkullMeta) item.getItemMeta();
         skim.setDisplayName("\u00a7fNemesis:");
         if (ps.nemesis != null && !ps.nemesis.equalsIgnoreCase("null")) {
             skim.setOwningPlayer(Bukkit.getOfflinePlayer(ps.nemesis));
@@ -376,7 +393,9 @@ public class GUIInventoryListener implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) { playerList.put(p, "\u00a7fIn the creative lobby"); }
         for (Game g : YEUHLobby.getPlugin().getGames()) {
             for (UUID uuid : g.getPlayers()) {
-                playerList.put(Bukkit.getOfflinePlayer(uuid), "\u00a7fIn game: \u00a7d\u00a7l" + g.server);
+                boolean spectating = !g.getAlive().contains(Bukkit.getOfflinePlayer(uuid).getName());
+                playerList.put(Bukkit.getOfflinePlayer(uuid),
+                        "\u00a7fIn game: \u00a7d\u00a7l" + g.server + (spectating ? "\n\u00a77(Spectating)" : ""));
             }
         }
 
@@ -395,7 +414,7 @@ public class GUIInventoryListener implements Listener {
             } else {
                 im.setDisplayName("\u00a7d" + p.getKey().getName());
             }
-            im.setLore(Arrays.asList(p.getValue()));
+            im.setLore(Arrays.asList(p.getValue().split("\n")));
             item.setItemMeta(im);
 
             while (i % 9 > 7) i++;
@@ -434,9 +453,9 @@ public class GUIInventoryListener implements Listener {
                         e.getView().close();
                         Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "list");
                         break;
-                    case BOW:
+                    case APPLE:
                         e.getView().close();
-                        Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "stats");
+                        Bukkit.dispatchCommand(Bukkit.getPlayerExact(player.getName()), "member");
                         break;
                     case NETHERITE_SWORD:
                         e.getView().close();
