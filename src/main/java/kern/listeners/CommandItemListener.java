@@ -6,11 +6,14 @@ import java.util.Map;
 
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -23,40 +26,50 @@ public class CommandItemListener implements Listener {
 
     @EventHandler
     public void onInventory(InventoryClickEvent e) {
-        if (canDoWhatever((Player) e.getWhoClicked())) return;
+        if (canDoWhatever((Player) e.getWhoClicked()))
+            return;
         e.setCancelled(true);
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent e) {
-        if (canDoWhatever(e.getPlayer())) return;
+        if (canDoWhatever(e.getPlayer()))
+            return;
         e.setCancelled(true);
     }
 
     @EventHandler
     public void onPickup(EntityPickupItemEvent e) {
-        if (!(e.getEntity() instanceof Player)) return;
-        if (canDoWhatever((Player) e.getEntity())) return;
+        if (!(e.getEntity() instanceof Player))
+            return;
+        if (canDoWhatever((Player) e.getEntity()))
+            return;
         e.setCancelled(true);
     }
 
-    @EventHandler
+    public static boolean inSpawn(Location l) {
+        return Math.abs(l.getBlockX()) < 100 && Math.abs(l.getBlockZ()) <= 100;
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onInteract(PlayerInteractEvent e) {
-        if (e.getPlayer().getGameMode() == GameMode.CREATIVE) return;
-        if (!e.getPlayer().getInventory().getItemInMainHand().containsEnchantment(Enchantment.DIG_SPEED)) return;
+        if (e.getPlayer().getGameMode() == GameMode.CREATIVE || e.getAction() == Action.PHYSICAL)
+            return;
+        if (!e.getPlayer().getInventory().getItemInMainHand().containsEnchantment(Enchantment.DIG_SPEED))
+            return;
         e.setCancelled(true);
         switch (e.getPlayer().getInventory().getItemInMainHand().getType()) {
-            case NETHERITE_SWORD:
-                Bukkit.dispatchCommand(e.getPlayer(), "join");
-                break;
-            case BOW:
-                Bukkit.dispatchCommand(e.getPlayer(), "stats");
-                break;
-            case DIAMOND:
-                if (!e.getPlayer().getOpenInventory().getTitle().toLowerCase().contains("yeuh"))
-                    Bukkit.dispatchCommand(e.getPlayer(), "help");
-                break;
-            default:
+        case NETHERITE_SWORD:
+            Bukkit.dispatchCommand(e.getPlayer(), "join");
+            break;
+        case BOW:
+            Bukkit.dispatchCommand(e.getPlayer(), "stats");
+            break;
+        case DIAMOND:
+            if (!e.getPlayer().getOpenInventory().getTitle().toLowerCase().contains("yeuh"))
+                Bukkit.dispatchCommand(e.getPlayer(), "help");
+            break;
+        default:
         }
     }
 

@@ -1,7 +1,9 @@
 package kern.commands;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.command.Command;
@@ -12,14 +14,16 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import kern.Game;
 import kern.YEUHLobby;
+import kern.threads.KillServerThread;
 
 public class JoinCommand implements CommandExecutor {
 
-    private static Set<String> joinTwice = new HashSet<>();
+    private static Map<String, Integer> joinTwice = new HashMap<>();
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (!(sender instanceof Player)) return true;
+        if (!(sender instanceof Player))
+            return true;
 
         Player player = (Player) sender;
 
@@ -41,14 +45,21 @@ public class JoinCommand implements CommandExecutor {
             if (startingGames.isEmpty()) {
 
                 if (openGames.isEmpty()) {
-                    sender.sendMessage(
-                            "\u00a7cThere aren't any available games for you to join at the moment! Please wait for one to be ready!");
-                    if (!playingGames.isEmpty()) {
+                    if (playingGames.isEmpty()) {
                         sender.sendMessage(
-                                "\u00a7cUse \u00a7l/spectate \u00a7cif you would like to spectate an active game!");
+                                "\u00a7cThere aren't any available games for you to join at the moment! One should be ready in \u00a7e1 - 2 minutes\u00a7c!");
+                    } else if (playingGames.size() == KillServerThread.lastSeenGame.size()) {
+                        sender.sendMessage(
+                                "\u00a7cNo games were available for you to join, so you are spectating this game.");
+                        playingGames.get((int) (Math.random() * playingGames.size())).sendPlayerToGame(player);
+                    } else {
+                        sender.sendMessage(YEUHLobby.PREFIX
+                                + "There aren't any available games for you to join at the moment! One should be ready in \u00a7e1 - 2 minutes\u00a7f!");
+                        sender.sendMessage(YEUHLobby.PREFIX
+                                + "Or you can spectate an existing game by using \u00a7d/spectate\u00a7f!");
                     }
                 } else {
-                    openGames.get((int) (Math.random() * openGames.size())).sendPlayerToGame(player);
+                    openGames.get(0).sendPlayerToGame(player);
                 }
                 return true;
 

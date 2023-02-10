@@ -13,7 +13,7 @@ public class RatingCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("Your player rating is: \u00a76"
-                    + YEUHLobby.getScoreKeeper().getStats(sender.getName()).ratingString());
+                    + YEUHLobby.getScoreKeeper().getStats(sender.getName()).ratingString(true));
         } else if (args.length == 1) {
             Bukkit.dispatchCommand(sender, "stats rating " + args[0]);
         } else if (args.length == 3 && args[0].equalsIgnoreCase("set")) {

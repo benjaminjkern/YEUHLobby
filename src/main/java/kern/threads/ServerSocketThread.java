@@ -27,9 +27,10 @@ public class ServerSocketThread implements Runnable {
 				pool.execute(g);
 			}
 		} catch (IOException e) {
-			// Bukkit.getLogger().warning(e.getStackTrace()[0].toString());
 		}
 	}
 
-	private synchronized void addGame(Game g) { YEUHLobby.getPlugin().getGames().add(g); }
+	private synchronized void addGame(Game g) {
+		YEUHLobby.getPlugin().getGames().add(g);
+	}
 }

@@ -4,6 +4,7 @@ version: 1.0
 api-version: 1.16
 author: mcCesium
 descript: YEUH
+softdepend: [VaultAPI]
 commands:
   games:
     description: List all currently registered games.
@@ -54,4 +55,7 @@ commands:
     usage: /<command>
   removeallentities:
     description: removes all entites
+    usage: /<command>
+  nation:
+    description: for nation stuff
     usage: /<command>

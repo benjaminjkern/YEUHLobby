@@ -1,6 +1,7 @@
 package kern;
 
 import java.util.Date;
+import java.util.Map;
 
 import org.bukkit.Bukkit;
 
@@ -18,10 +19,10 @@ public class PlayerStats {
     public int wins;
     public int games;
     public String nemesis;
-    String lastKilledBy;
+    public String lastKilledBy;
     public int nemesisKills;
-    int lastKilledByKills;
-    long lastSeen;
+    public int lastKilledByKills;
+    public long lastSeen;
     public double experience;
     public int rank;
 
@@ -36,62 +37,44 @@ public class PlayerStats {
     public PlayerStats(String player) {
         if (player != null) this.player = player.toLowerCase();
         else this.player = null;
-        rating = 50;
-        playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = 0;
-        nemesis = lastKilledBy = null;
-        experience = 0;
-        rank = 0;
+        reset();
         seen();
     }
 
     public void reset() {
         rating = 50;
-        playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = 0;
-        nemesis = lastKilledBy = null;
+        playerKills = botKills = mobKills = animalKills = playerDeaths = envDeaths = wins = games = nemesisKills = lastKilledByKills = rank = 0;
         experience = 0;
-        rank = 0;
+        nemesis = lastKilledBy = null;
     }
 
     public boolean isEmpty() {
         return rating == 50 && playerKills + botKills + mobKills + animalKills + playerDeaths + envDeaths + wins + games
-                + nemesisKills + lastKilledByKills + experience == 0;
+                + nemesisKills + lastKilledByKills + experience + rank == 0;
     }
 
     public void seen() { lastSeen = new Date().getTime(); }
 
-    public static PlayerStats newFromParse(String input) {
-        String[] fields = input.split(":");
-        if (fields.length < 2) throw new IllegalArgumentException("Requires at least 2 inputs!");
-
-        PlayerStats ps = new PlayerStats(fields[0]);
-        ps.rating = Double.parseDouble(fields[1]);
-        if (fields.length == 2) return ps;
-        if (fields.length < 14) throw new IllegalArgumentException("Requires at least 14 inputs!");
-
-        ps.playerKills = Integer.parseInt(fields[2]);
-        ps.botKills = Integer.parseInt(fields[3]);
-        ps.mobKills = Integer.parseInt(fields[4]);
-        ps.animalKills = Integer.parseInt(fields[5]);
-        ps.playerDeaths = Integer.parseInt(fields[6]);
-        ps.envDeaths = Integer.parseInt(fields[7]);
-        ps.wins = Integer.parseInt(fields[8]);
-        ps.games = Integer.parseInt(fields[9]);
-        ps.nemesis = fields[10];
-        ps.lastKilledBy = fields[11];
-        ps.nemesisKills = Integer.parseInt(fields[12]);
-        ps.lastKilledByKills = Integer.parseInt(fields[13]);
-        if (fields.length == 14) return ps;
-
-        ps.lastSeen = Long.parseLong(fields[14]);
-        if (fields.length == 15) return ps;
-
-        ps.experience = Double.parseDouble(fields[15]);
-        if (fields.length == 16) return ps;
-
-        ps.rank = Integer.parseInt(fields[16]);
-        if (fields.length == 17) return ps;
-
-        throw new IllegalArgumentException("Wrong amount of inputs");
+    public static PlayerStats newFromParse(Map<String, String> input) {
+        PlayerStats ps = new PlayerStats(input.get("player"));
+        if (input.containsKey("rating")) ps.rating = Double.parseDouble(input.get("rating"));
+        if (input.containsKey("playerKills")) ps.playerKills = Integer.parseInt(input.get("playerKills"));
+        if (input.containsKey("botKills")) ps.botKills = Integer.parseInt(input.get("botKills"));
+        if (input.containsKey("mobKills")) ps.mobKills = Integer.parseInt(input.get("mobKills"));
+        if (input.containsKey("animalKills")) ps.animalKills = Integer.parseInt(input.get("animalKills"));
+        if (input.containsKey("playerDeaths")) ps.playerDeaths = Integer.parseInt(input.get("playerDeaths"));
+        if (input.containsKey("envDeaths")) ps.envDeaths = Integer.parseInt(input.get("envDeaths"));
+        if (input.containsKey("wins")) ps.wins = Integer.parseInt(input.get("wins"));
+        if (input.containsKey("games")) ps.games = Integer.parseInt(input.get("games"));
+        if (input.containsKey("nemesis")) ps.nemesis = input.get("nemesis");
+        if (input.containsKey("lastKilledBy")) ps.lastKilledBy = input.get("lastKilledBy");
+        if (input.containsKey("nemesisKills")) ps.nemesisKills = Integer.parseInt(input.get("nemesisKills"));
+        if (input.containsKey("lastKilledByKills"))
+            ps.lastKilledByKills = Integer.parseInt(input.get("lastKilledByKills"));
+        if (input.containsKey("lastSeen")) ps.lastSeen = Long.parseLong(input.get("lastSeen"));
+        if (input.containsKey("experience")) ps.experience = Double.parseDouble(input.get("experience"));
+        if (input.containsKey("rank")) ps.rank = Integer.parseInt(input.get("rank"));
+        return ps;
     }
 
     public void loseTo(double opponentElo, String opponent, double K) {
@@ -129,8 +112,10 @@ public class PlayerStats {
                 lastKilledBy = null;
                 lastKilledByKills = 0;
             }
-            if (opponent.equalsIgnoreCase("YEUH-BOT")) botKills++;
-            else if (opponent.equalsIgnoreCase("YEUH-MONSTER")) {
+            if (opponent.equalsIgnoreCase("YEUH-BOT")) {
+                botKills++;
+                experience += 5;
+            } else if (opponent.equalsIgnoreCase("YEUH-MONSTER")) {
                 mobKills++;
                 return;
             } else if (opponent.equalsIgnoreCase("YEUH-ANIMAL")) {
@@ -191,6 +176,8 @@ public class PlayerStats {
 
     public String rankingColor() {
         switch (rank) {
+            case 0:
+                return "\u00a76";
             case 1:
                 return "\u00a7c";
             case 2:
@@ -202,12 +189,14 @@ public class PlayerStats {
             case 5:
                 return "\u00a7d\u00a7l";
             default:
-                return "\u00a76";
+                return "\u00a7k";
         }
     }
 
     public String getRankString() {
         switch (rank) {
+            case 0:
+                return "Regular";
             case 1:
                 return "Veteran";
             case 2:
@@ -219,17 +208,31 @@ public class PlayerStats {
             case 5:
                 return "Legendary";
             default:
-                return "Regular";
+                return "MF UHHHHHHHH";
         }
 
     }
 
-    public String ratingString() { return String.format(rankingColor() + "%.2f", rating); }
+    public String ratingString(boolean includeRank) {
+        return String.format(rankingColor() + "%.2f", rating)
+                + (includeRank && rank > 0 ? " \u00a7f(" + rankingColor() + getRankString() + "\u00a7f)" : "");
+    }
+
+    public String ratingString() { return ratingString(false); }
 
     public String toString() {
         return player + ":" + rating + ":" + playerKills + ":" + botKills + ":" + mobKills + ":" + animalKills + ":"
                 + playerDeaths + ":" + envDeaths + ":" + wins + ":" + games + ":" + nemesis + ":" + lastKilledBy + ":"
                 + nemesisKills + ":" + lastKilledByKills + ":" + lastSeen + ":" + experience + ":" + rank;
+    }
+
+    public String toFileString() {
+        return "player:" + player + "\nrating:" + rating + "\nplayerKills:" + playerKills + "\nbotKills:" + botKills
+                + "\nmobKills:" + mobKills + "\nanimalKills:" + animalKills + "\nplayerDeaths:" + playerDeaths
+                + "\nenvDeaths:" + envDeaths + "\nwins:" + wins + "\ngames:" + games + "\nnemesis:" + nemesis
+                + "\nlastKilledBy:" + lastKilledBy + "\nnemesisKills:" + nemesisKills + "\nlastKilledByKills:"
+                + lastKilledByKills + "\nlastSeen:" + lastSeen + "\nexperience:" + experience + "\nrank:" + rank;
+
     }
 
 }

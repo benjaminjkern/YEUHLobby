@@ -1,9 +1,12 @@
 package kern;
 
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import kern.listeners.PlayerListener;
+import net.milkbowl.vault.permission.Permission;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,6 +38,8 @@ public class Game implements Runnable {
     public String activeScenarios;
 
     public long lastPing;
+    public long endTime;
+    public long startTime;
 
     public PrintWriter outPrint;
 
@@ -54,6 +59,8 @@ public class Game implements Runnable {
         this.socket = socket;
 
         lastPing = new Date().getTime();
+        endTime = Long.MAX_VALUE;
+        startTime = Long.MAX_VALUE;
         try {
             outPrint = new PrintWriter(socket.getOutputStream(), true);
         } catch (IOException e) {
@@ -67,26 +74,35 @@ public class Game implements Runnable {
     public List<String> getAlive() { return alive; }
 
     public void sendPlayerToGame(Player player) {
-        PlayerListener.addToSendingToGame(player);
-        players.add(player.getUniqueId());
+        if (!players.contains(player.getUniqueId())) {
+            players.add(player.getUniqueId());
+
+            Bukkit.getLogger().info(
+                    "\u00a70(\u00a7d\u00a7l>\u00a70) \u00a77" + player.getDisplayName() + " \u00a75(" + server + ")");
+        }
 
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("Connect");
         out.writeUTF(server);
         player.sendPluginMessage(YEUHLobby.getPlugin(), "BungeeCord", out.toByteArray());
+        PlayerListener.addToSendingToGame(player);
+
     }
 
     public synchronized void disable(boolean removeFromList) {
         acceptingNew = false;
 
-        if (gameState.equals("ENDED")) {
-            Set<String> seen = new HashSet<>();
+        if (gameState != null && gameState.equals("ENDED")) {
+            YEUHLobby.setGamesPlayedToday(YEUHLobby.gamesPlayedToday + 1);
+            YEUHLobby.setGamesPlayedTotal(YEUHLobby.gamesPlayedTotal + 1);
             if (gameWinners.isEmpty()) Bukkit.getLogger().info("Game ended without a winner being sent!");
             else {
+                Set<String> seen = new HashSet<>();
                 playing.removeAll(gameWinners);
                 for (String winner : gameWinners) {
                     if (seen.contains(winner)) continue;
                     seen.add(winner);
+                    if (winner.equalsIgnoreCase("YEUH-BOT")) continue;
                     YEUHLobby.getScoreKeeper().winGame(maxSize * (maxSize - playing.size()), winner,
                             playing.toArray(new String[0]));
                     Bukkit.getLogger().info(YEUHLobby.PREFIX + "\u00a7d\u00a7l" + winner + " \u00a7fhas won the game!");
@@ -100,6 +116,9 @@ public class Game implements Runnable {
                     if (playerWinner != null) playerWinner
                             .sendMessage(YEUHLobby.PREFIX + "\u00a7dCongrats on your win! You now have \u00a7f\u00a7l"
                                     + YEUHLobby.getScoreKeeper().getStats(winner, true).wins + "\u00a7d wins!");
+                }
+                if (seen.contains("YEUH-BOT")) {
+                    YEUHLobby.broadcastInfoMessage("\u00a7d\u00a7lYEUH-BOT \u00a7fhas won the game!");
                 }
             }
         }
@@ -115,6 +134,26 @@ public class Game implements Runnable {
         if (removeFromList) YEUHLobby.getPlugin().getGames().remove(this);
     }
 
+    public void broadcastMessage(String msg) {
+        try {
+            boolean first = true;
+            for (String s : msg.split("\n")) {
+                outPrint.println((first ? "" : "RAW") + "MSG:" + s);
+                first = false;
+            }
+        } catch (Exception e) {
+            Bukkit.getLogger().warning("Failed to Broadcast: " + e.toString());
+        }
+    }
+
+    public void broadcastRawMessage(String msg) {
+        try {
+            for (String s : msg.split("\n")) outPrint.println("RAWMSG:" + s);
+        } catch (Exception e) {
+            Bukkit.getLogger().warning("Failed to Broadcast: " + e.toString());
+        }
+    }
+
     public void run() {
         try (Scanner in = new Scanner(socket.getInputStream())) {
 
@@ -125,11 +164,8 @@ public class Game implements Runnable {
             for (Game g : YEUHLobby.getPlugin().getGames())
                 if (input[1].equals(g.server)) throw new IllegalArgumentException("That server is already registered!");
             server = input[1];
-            Bukkit.getLogger().info("Registering New Server: " + server);
-            YEUHLobby.broadcastInfoMessage("\u00a75[Admin] \u00a7fRegistering New Server: \u00a7d" + server,
-                    "yeuhlobby.admin");
-
-            boolean err;
+            YEUHLobby.broadcastRawMessage("\u00a75[Admin] \u00a7fRegistering New Server: \u00a7d" + server,
+                    "yeuhlobby.admin", true);
 
             while (in.hasNextLine()) {
                 String nextLine = in.nextLine();
@@ -137,7 +173,6 @@ public class Game implements Runnable {
 
                 lastPing = new Date().getTime();
 
-                err = true;
                 switch (input[0]) {
                     case "GAMESTATE":
                         if (input.length != 2) break;
@@ -145,7 +180,8 @@ public class Game implements Runnable {
                         switch (input[1]) {
                             case "WAITING":
                                 acceptingNew = true;
-                                YEUHLobby.broadcastInfoMessage("Game \u00a7d" + server + " \u00a7fis ready!");
+                                YEUHLobby.broadcastInfoMessage(
+                                        "Game \u00a7d" + server + " \u00a7fis ready! Use \u00a7d/join \u00a7fto join!");
                                 break;
                             case "STARTING":
                                 outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats("YEUH-BOT", true));
@@ -157,59 +193,60 @@ public class Game implements Runnable {
                                 for (int i = alive.size(); i < maxSize; i++) alive.add("YEUH-BOT");
                                 for (String p : alive) { playing.add(p); }
 
-                                YEUHLobby.broadcastInfoMessage(
-                                        "\u00a75[Admin] \u00a7d" + server + " \u00a7fis starting!", "yeuhlobby.admin");
+                                YEUHLobby.broadcastRawMessage(
+                                        "\u00a75[Admin] \u00a7d" + server + " \u00a7fis starting!", "yeuhlobby.admin",
+                                        true);
+
+                                if (endTime == Long.MAX_VALUE) endTime = new Date().getTime();
 
                                 acceptingNew = false;
                                 break;
+                            case "PLAYING":
+                                endTime = Long.MAX_VALUE;
+                                if (startTime == Long.MAX_VALUE) startTime = new Date().getTime();
+                                acceptingNew = false;
+                                break;
                             case "ENDED":
-                                YEUHLobby.broadcastInfoMessage("\u00a75[Admin] \u00a7d" + server + " \u00a7fhas ended!",
-                                        "yeuhlobby.admin");
+                                YEUHLobby.broadcastRawMessage("\u00a75[Admin] \u00a7d" + server + " \u00a7fhas ended!",
+                                        "yeuhlobby.admin", true);
+                                if (endTime == Long.MAX_VALUE) endTime = new Date().getTime();
+                                break;
                             default:
                                 acceptingNew = false;
                         }
-                        err = false;
-                        break;
+                        continue;
                     case "ACTIVESCENARIOS":
                         if (input.length != 2) break;
                         activeScenarios = input[1];
-                        err = false;
-                        break;
+                        continue;
                     case "CURRENTSIZE":
                         if (input.length != 2) break;
                         currentSize = Integer.parseInt(input[1]);
-                        err = false;
-                        break;
+                        continue;
                     case "MINSIZE":
                         if (input.length != 2) break;
                         minSize = Integer.parseInt(input[1]);
-                        err = false;
-                        break;
+                        continue;
                     case "MAXSIZE":
                         if (input.length != 2) break;
                         maxSize = Integer.parseInt(input[1]);
-                        err = false;
-                        break;
+                        continue;
                     case "DISCONNECTED":
                         if (input.length != 2) break;
                         players.remove(Bukkit.getOfflinePlayer(input[1]).getUniqueId());
+                        YEUHLobby.getScoreKeeper().getStats(input[1]).seen();
 
-                        if (alive.contains(input[1])) {
-                            Player p = Bukkit.getPlayerExact(input[1]);
-                            if (p != null) p.sendMessage(YEUHLobby.PREFIX
-                                    + "You disconnected while a game was running! Use \u00a7d/join \u00a7fto go back to the game.");
-                        }
+                        Bukkit.getLogger().info("\u00a70(\u00a7d\u00a7l<\u00a7c\u00a7l-\u00a70) \u00a77" + input[1]
+                                + " \u00a75(" + server + ")");
 
-                        err = false;
-                        break;
+                        continue;
                     case "KILL":
                         if (input.length != 3 && input.length != 4) break;
                         YEUHLobby.getScoreKeeper().kill(input[1], input[2]);
                         outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats(input[1], true));
                         outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats(input[2], true));
                         if (input.length != 4) alive.remove(input[2]);
-                        err = false;
-                        break;
+                        continue;
                     case "DEATH":
                         if (input.length != 2 && input.length != 3) break;
                         if (input.length != 3) alive.remove(input[1]);
@@ -218,43 +255,52 @@ public class Game implements Runnable {
                         outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats(input[1], true));
                         for (String p : alive)
                             outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats(p, true));
-                        err = false;
-                        break;
+                        continue;
                     case "WIN":
                         if (input.length != 2) break;
                         gameWinners.add(input[1]);
-                        err = false;
-                        break;
+
+                        continue;
                     case "STATSREQUEST":
                         if (input.length != 2) break;
 
                         outPrint.println("STATS:" + YEUHLobby.getScoreKeeper().getStats(input[1], true));
-
-                        err = false;
-                        break;
+                        Permission perms = YEUHLobby.getPlugin().getServer().getServicesManager()
+                                .getRegistration(Permission.class).getProvider();
+                        String group = perms.getPrimaryGroup(Bukkit.getWorld("creative"), input[1]);
+                        if (!group.equalsIgnoreCase("default")) outPrint.println("GROUP:" + input[1] + ":" + group);
+                        continue;
                     case "SHUTTINGDOWN":
                         if (input.length != 1) break;
-                        Bukkit.getLogger().info("Shutting Down Server: " + server);
-                        err = false;
-                        break;
+                        YEUHLobby.broadcastRawMessage("\u00a75[Admin] \u00a7fShutting Down Server: \u00a7d" + server,
+                                "yeuhlobby.admin", true);
+                        continue;
                     default:
                         // nothing
                 }
 
-                if (err)
-                    Bukkit.getLogger().info("[" + server + "] " + String.join(":", input) + " was not recognized!");
+                Bukkit.getLogger().info("[" + server + "] " + String.join(":", input) + " was not recognized!");
             }
-        } catch (Exception e) {
-            Bukkit.getLogger().warning(e.getStackTrace()[0].toString());
+        } catch (IOException e) {
+            Bukkit.getLogger().warning(e.toString());
         } finally {
             disable(true);
         }
     }
 
     public String toString() {
+        if (gameState.equals("PLAYING")) {
+            long now = new Date().getTime();
+            long seconds = (now - startTime) / 1000;
+            long minutes = seconds / 60;
+            seconds = seconds % 60;
+
+            String gameTime = (minutes < 10 ? "0" : "") + minutes + ":" + (seconds < 10 ? "0" : "") + seconds;
+            return "  \u00a75\u00a7l" + server + "\u00a7f: \u00a7d" + gameState + "\n    \u00a7fPlayers: \u00a7d"
+                    + currentSize + " \u00a75/ \u00a7d" + maxSize + "\n    \u00a7fGame Time: \u00a7d" + gameTime;
+        }
         return "  \u00a75\u00a7l" + server + "\u00a7f: \u00a7d" + gameState + "\n    \u00a7fPlayers: \u00a7d"
-                + currentSize + " \u00a75/ \u00a7d" + maxSize + " \u00a77(" + minSize
-                + " needed to start game)\n    \u00a7fLobby Open: \u00a7d" + acceptingNew;
+                + currentSize + " \u00a75/ \u00a7d" + maxSize + "\n    \u00a7fLobby Open: \u00a7d" + acceptingNew;
     }
 
     public String toString(int i) {
@@ -262,8 +308,8 @@ public class Game implements Runnable {
                 + minSize + " needed to start game)\n    Lobby Open: " + acceptingNew;
     }
 
-    public String getLastPing() {
-        long diff = new Date().getTime() - lastPing;
+    public String getLastPing(long time) {
+        long diff = new Date().getTime() - time;
         if (diff < 1000) return diff + " milliseconds ago";
         if (diff < 60 * 1000) return diff / 1000 + " seconds ago";
         if (diff < 60 * 60 * 1000) return diff / (60 * 1000) + " minutes ago";
@@ -271,12 +317,17 @@ public class Game implements Runnable {
         return diff / (24 * 60 * 60 * 1000) + " days ago";
     }
 
+    public String getLastPing() { return getLastPing(lastPing); }
+
     public boolean forceKill() {
         disable(true);
+        return forceKill(server);
+    }
 
+    public static boolean forceKill(String name) {
         File tempScript;
         try {
-            tempScript = createTempScript();
+            tempScript = createTempScript(name);
         } catch (IOException e) {
             return false;
         }
@@ -291,14 +342,14 @@ public class Game implements Runnable {
         return false;
     }
 
-    public File createTempScript() throws IOException {
+    private static File createTempScript(String name) throws IOException {
         File tempScript = File.createTempFile("script", null);
 
         Writer streamWriter = new OutputStreamWriter(new FileOutputStream(tempScript));
         PrintWriter printWriter = new PrintWriter(streamWriter);
 
         printWriter.println("#!/bin/bash");
-        printWriter.println("ps a | grep \"java[^.]*" + server + "\" | awk '{print $1}' | xargs kill -9");
+        printWriter.println("ps a | grep \"java[^.]*" + name + "\" | awk '{print $1}' | xargs kill -9");
 
         printWriter.close();
 

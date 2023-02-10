@@ -23,11 +23,15 @@ public class ListCommand implements CommandExecutor {
                     + Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.joining(","));
             for (Game g : YEUHLobby.getPlugin().getGames()) {
                 message += "\n" + g.server + ": " + g.currentSize;
-                if (g.currentSize > 0) message += "\n  " + g.getPlayers().stream().map((uuid) -> {
-                    String name = Bukkit.getOfflinePlayer(uuid).getName();
-                    if (g.getAlive().contains(name)) return name;
-                    return name + " \u00a77(Spectating)";
-                }).collect(Collectors.joining(","));
+                if (g.currentSize > 0) {
+                    message += "\n  " + g.getPlayers().stream().map((uuid) -> {
+                        String name = Bukkit.getOfflinePlayer(uuid).getName();
+                        if (g.getAlive().contains(name)) return name;
+                        return name + " \u00a77(Spectating)\u00a7f";
+                    }).collect(Collectors.joining(", "));
+                    if (g.currentSize > g.getPlayers().size())
+                        message += " \u00a77(" + (g.currentSize - g.getPlayers().size()) + " untracked players)";
+                }
             }
             sender.sendMessage(message);
         }

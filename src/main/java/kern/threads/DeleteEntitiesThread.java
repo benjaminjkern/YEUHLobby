@@ -21,9 +21,6 @@ public class DeleteEntitiesThread implements Runnable {
     public void run() {
         // remove ALL entities in the creative world every 15 minutes.
 
-        long now = new Date().getTime();
-        for (Game g : YEUHLobby.getPlugin().getGames()) { if (now - g.lastPing > 15 * 60 * 1000) g.forceKill(); }
-
         // offset since the item at spawn will need to be despawned
         int entities = -1;
         // remove all entities

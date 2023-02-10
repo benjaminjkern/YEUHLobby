@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
@@ -15,15 +16,20 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Vector;
 
 import kern.Game;
 import kern.YEUHLobby;
+import kern.nations.NationManager;
 import kern.threads.FillItemFrameThread;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -40,6 +46,7 @@ public class PlayerListener implements Listener {
             public void run() {
                 if (!YEUHLobby.getPlugin().isEnabled()) this.cancel();
                 Bukkit.getOnlinePlayers().forEach(player -> {
+                    if (player.getWorld().getName().equals(NationManager.NATION_WORLD)) return;
                     checkHeldMessages(player);
                     player.setFoodLevel(20);
                     if (Math.abs(player.getLocation().getBlockX()) <= 100
@@ -65,6 +72,11 @@ public class PlayerListener implements Listener {
                                     player.setGameMode(GameMode.CREATIVE);
                                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(
                                             "\u00a7fYou have entered the \u00a7dCreative Zone\u00a7f! Build whatever you like!"));
+                                    ItemStack claimingTool = new ItemStack(Material.GOLDEN_SHOVEL);
+                                    ItemMeta im = claimingTool.getItemMeta();
+                                    im.setDisplayName("\u00a7eRight click to claim land!");
+                                    claimingTool.setItemMeta(im);
+                                    player.getInventory().setItem(0, claimingTool);
                                 });
                             }
                         }
@@ -72,6 +84,7 @@ public class PlayerListener implements Listener {
                 });
             }
         }.runTaskTimerAsynchronously(YEUHLobby.getPlugin(), 0, 10);
+
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -80,24 +93,35 @@ public class PlayerListener implements Listener {
 
         YEUHLobby.getScoreKeeper().getStats(player.getName()).seen();
 
-        String joinMessage = "\u00a70(\u00a7a\u00a7l+\u00a70) \u00a77" + player.getDisplayName();
+        event.setJoinMessage(null);
+
+        boolean returning = false;
 
         for (Game g : YEUHLobby.getPlugin().getGames()) {
             if (g.getPlayers().contains(player.getUniqueId())) {
                 g.getPlayers().remove(player.getUniqueId());
-                if (g.getPlayers().isEmpty() && (g.gameState.equals("PLAYING") || g.gameState.equals("DEATHMATCH"))) {
-                    g.gameState = "ENDED";
-                }
-                joinMessage = "\u00a70(\u00a7d\u00a7l<\u00a70) \u00a77" + player.getDisplayName();
+                YEUHLobby.broadcastRawMessage("\u00a70(\u00a7d\u00a7l<\u00a70) \u00a77" + player.getDisplayName(), "",
+                        false);
+                Bukkit.getLogger().info("\u00a70(\u00a7d\u00a7l<\u00a70) \u00a77" + player.getDisplayName()
+                        + " \u00a75(" + g.server + ")");
+                returning = true;
+                break;
             }
 
             if (!g.getPlayers().isEmpty() && g.getAlive().contains(player.getName())) {
-                player.sendMessage(YEUHLobby.PREFIX
-                        + "You disconnected while a game was running! Use \u00a7d/join \u00a7fto go back to the game.");
+                YEUHLobby.broadcastRawMessage("\u00a70(\u00a7a\u00a7l+\u00a70) \u00a77" + player.getDisplayName(), "",
+                        true);
+                g.sendPlayerToGame(player);
+                // Bukkit.getLogger()
+                // .info("\u00a70(\u00a7a\u00a7l+\u00a7d\u00a7l>\u00a70) \u00a77" +
+                // player.getDisplayName());
+                // sendingToGame.remove(player);
+                return;
             }
         }
 
-        event.setJoinMessage(joinMessage);
+        if (!returning)
+            YEUHLobby.broadcastRawMessage("\u00a70(\u00a7a\u00a7l+\u00a70) \u00a77" + player.getDisplayName());
 
         new BukkitRunnable() {
             public void run() {
@@ -113,11 +137,10 @@ public class PlayerListener implements Listener {
                 if (!YEUHLobby.getPlugin().getStartingGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
                             + "A game is starting right now! If you would like to join, use \u00a7d/join\u00a7f!");
-
                 } else if (!YEUHLobby.getPlugin().getPlayingGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
                             + "There are active games running! If you would like to spectate one, use \u00a7d/spectate\u00a7f!");
-                } else {
+                } else if (!YEUHLobby.getPlugin().getOpenGames().isEmpty()) {
                     player.sendMessage(YEUHLobby.PREFIX
                             + "Use \u00a7d/join \u00a7fto start playing \u00a7d\u00a7lYEUH BATTLE ROYALE\u00a7f!");
                 }
@@ -180,19 +203,24 @@ public class PlayerListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onLeave(PlayerQuitEvent event) {
         Player p = event.getPlayer();
-        String quitMessage = "\u00a70(\u00a7c\u00a7l-\u00a70) \u00a77" + p.getDisplayName();
+        event.setQuitMessage(null);
+        inSpawn.remove(p);
+
+        YEUHLobby.getScoreKeeper().getStats(p.getName()).seen();
 
         if (sendingToGame.contains(p)) {
-            quitMessage = "\u00a70(\u00a7d\u00a7l>\u00a70) \u00a77" + p.getDisplayName();
+            YEUHLobby.broadcastRawMessage("\u00a70(\u00a7d\u00a7l>\u00a70) \u00a77" + p.getDisplayName(), "", false);
             sendingToGame.remove(p);
+            return;
         }
 
-        event.setQuitMessage(quitMessage);
-        inSpawn.remove(p);
+        YEUHLobby.broadcastRawMessage("\u00a70(\u00a7c\u00a7l-\u00a70) \u00a77" + p.getDisplayName());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onRightClick(PlayerInteractEntityEvent event) {
+
+        if (event.getPlayer().getWorld().getName().equals(NationManager.NATION_WORLD)) return;
         Entity entity = event.getRightClicked();
         Player player = event.getPlayer();
 
@@ -215,10 +243,27 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player && Math.abs(event.getEntity().getLocation().getX()) < 100
-                && Math.abs(event.getEntity().getLocation().getZ()) < 100) {
+        if (event.getEntity().getWorld().getName().equals(NationManager.NATION_WORLD)) return;
+
+        if (event.getEntity() instanceof Player && Math.abs(event.getEntity().getLocation().getX()) <= 101
+                && Math.abs(event.getEntity().getLocation().getZ()) <= 101) {
             event.getEntity().setFireTicks(0);
             event.setCancelled(true);
+        }
+    }
+
+    // jump pads
+    @EventHandler
+    public void onInteract(PlayerInteractEvent e) {
+        if (e.getPlayer().getWorld().getName().equals(NationManager.NATION_WORLD)) return;
+        int speed = 800;
+        int speedY = 30;
+        if (CommandItemListener.inSpawn(e.getPlayer().getLocation()) && e.getAction() == Action.PHYSICAL) {
+            float yaw = (e.getPlayer().getLocation().getYaw() + 360) % 360;
+            if (yaw >= 360 - 45 || yaw < 45) e.getPlayer().setVelocity(new Vector(0, speedY, speed));
+            else if (yaw >= 45 && yaw < 180 - 45) e.getPlayer().setVelocity(new Vector(-speed, speedY, 0));
+            else if (yaw >= 180 - 45 && yaw < 180 + 45) e.getPlayer().setVelocity(new Vector(0, speedY, -speed));
+            else if (yaw >= 180 + 45 && yaw < 360 - 45) e.getPlayer().setVelocity(new Vector(speed, speedY, 0));
         }
     }
 

@@ -46,11 +46,13 @@ allprojects {
     }
 }
 
-dependencies { 
+dependencies {
+    compileOnly "com.github.MilkBowl:VaultAPI:1.7"
     shadow 'com.google.code.findbugs:jsr305:3.0.2'
-    shadow 'org.spigotmc:spigot-api:1.16.3-R0.1-SNAPSHOT'
+    shadow 'org.spigotmc:spigot-api:1.18.1-R0.1-SNAPSHOT'
     shadow 'com.comphenix.protocol:ProtocolLib:4.4.0'
-    shadow 'com.gmail.filoghost.holographicdisplays:holographicdisplays-plugin:2.4.5-SNAPSHOT'
+    // shadow 'me.filoghost.holographicdisplays:holographicdisplays-plugin:3.0.0-SNAPSHOT'
+    // compile files("${projectDir}/lib/holographicdisplays-plugin-3.0.0-SNAPSHOT.jar")
 }
 
 shadowJar {

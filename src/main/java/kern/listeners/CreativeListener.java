@@ -36,12 +36,15 @@ public class CreativeListener implements Listener {
         if (potionBits.contains(item.getType())) {
             if (item.hasItemMeta()) {
                 PotionMeta pm = (PotionMeta) item.getItemMeta();
-                if (pm.hasCustomEffects()) return;
+                if (pm.hasCustomEffects())
+                    return;
             }
 
             new BukkitRunnable() {
                 @Override
-                public void run() { e.getWhoClicked().getInventory().setItem(e.getSlot(), item); }
+                public void run() {
+                    e.getWhoClicked().getInventory().setItem(e.getSlot(), item);
+                }
             }.runTaskLater(YEUHLobby.getPlugin(), 1);
             return;
         }
@@ -50,16 +53,21 @@ public class CreativeListener implements Listener {
             if (item.hasItemMeta()) {
                 Map<Enchantment, Integer> enchants = ((EnchantmentStorageMeta) item.getItemMeta()).getStoredEnchants();
                 // Bukkit.getLogger().info(enchants + "");
-                if (enchants.size() > 1) return;
+                if (enchants.size() > 1)
+                    return;
                 for (Entry<Enchantment, Integer> entry : enchants.entrySet()) {
-                    Bukkit.getLogger().info(entry.getValue() + ", " + entry.getKey().getMaxLevel());
-                    if (entry.getValue() > entry.getKey().getMaxLevel()) return;
+                    // Bukkit.getLogger().info(entry.getValue() + ", " +
+                    // entry.getKey().getMaxLevel());
+                    if (entry.getValue() > entry.getKey().getMaxLevel())
+                        return;
                 }
             }
 
             new BukkitRunnable() {
                 @Override
-                public void run() { e.getWhoClicked().getInventory().setItem(e.getSlot(), item); }
+                public void run() {
+                    e.getWhoClicked().getInventory().setItem(e.getSlot(), item);
+                }
             }.runTaskLater(YEUHLobby.getPlugin(), 1);
             return;
         }

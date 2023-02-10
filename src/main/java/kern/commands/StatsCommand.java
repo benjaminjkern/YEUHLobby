@@ -131,7 +131,7 @@ public class StatsCommand implements CommandExecutor {
     private boolean showStats(CommandSender sender, String... args) {
         if (args.length == 0) return true;
         if (!(sender instanceof Player)) {
-            sender.sendMessage(sk.getStats(args[0]).toString());
+            sender.sendMessage(sk.getStats(args[0]).toFileString());
             return true;
         }
         ((Player) sender).openInventory(GUIInventoryListener.getStatsInventory(args[0]));
@@ -139,17 +139,26 @@ public class StatsCommand implements CommandExecutor {
     }
 
     private boolean top(CommandSender sender, String... args) {
-        String field = "rating";
+        String field = "";
         if (args.length > 0) field = args[0];
 
-        sender.sendMessage(YEUHLobby.PREFIX + "Top " + field + (field.endsWith("s") ? "" : "s") + ":");
+        sender.sendMessage(YEUHLobby.PREFIX + "Top "
+                + (field.equals("") ? "players" : (field + (field.endsWith("s") ? "" : "s"))) + ":");
 
         int i = 1;
         try {
-            for (PlayerStats ps : sk.top(field, 10)) {
+            for (PlayerStats ps : sk.top(field.equals("") ? "elo" : field, 10)) {
                 Object value;
-                if (field.equals("rating")) {
+                if (field.equals("")) {
+                    value = ps.ratingString(true);
+                } else if (field.equals("rating")) {
                     value = ps.ratingString();
+                } else if (field.equals("elo")) {
+                    value = "\u00a76" + String.format("%.2f", ps.getEloScore());
+                } else if (field.equals("level")) {
+                    value = "\u00a7d" + ps.getLevel();
+                } else if (field.equals("nemesis")) {
+                    value = "\u00a7d" + ps.getLevel();
                 } else {
                     value = PlayerStats.class.getField(field).get(ps);
                     if (value instanceof Double) value = "\u00a76" + String.format("%.2f", value);
