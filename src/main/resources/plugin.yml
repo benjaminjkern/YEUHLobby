@@ -5,57 +5,58 @@ api-version: 1.16
 author: mcCesium
 descript: YEUH
 softdepend: [VaultAPI]
+depend: [HolographicDisplays]
 commands:
-  games:
-    description: List all currently registered games.
-    usage: /<command>
-    permission: yeuhlobby.commands.games
-  spectate:
-    description: Spectate a currently active game.
-    usage: /<command> [Game name]
-  rating:
-    description: See your player rating.
-    usage: /<command> <subcommands>
-  stats:
-    description: See your player stats.
-    usage: /<command> <subcommands>
-  plugin:
-    description: See the plugin.
-    usage: /<command>
-    aliases: [pl, plugins]
-  help:
-    description: Get help.
-    usage: /<command>
-  rules:
-    description: View rules of server.
-    usage: /<command>
-  discord:
-    description: View discord join link.
-    usage: /<command>
-  updatescenarioboard:
-    description: Update the scenario board.
-    usage: /<command>
-  updatetopboards:
-    description: Update the top player boards.
-    usage: /<command>
-  list:
-    description: List all players online
-    usage: /<command>
-  join:
-    description: Join a game
-    usage: /<command>
-  fakeleave:
-    description: Fake leave server
-    usage: /<command>
-  patreon:
-    description: Shows patreon info!
-    usage: /<command>
-  member:
-    description: Shows Member info!
-    usage: /<command>
-  removeallentities:
-    description: removes all entites
-    usage: /<command>
-  nation:
-    description: for nation stuff
-    usage: /<command>
+    games:
+        description: List all currently registered games.
+        usage: /<command>
+        permission: yeuhlobby.commands.games
+    spectate:
+        description: Spectate a currently active game.
+        usage: /<command> [Game name]
+    rating:
+        description: See your player rating.
+        usage: /<command> <subcommands>
+    stats:
+        description: See your player stats.
+        usage: /<command> <subcommands>
+    plugin:
+        description: See the plugin.
+        usage: /<command>
+        aliases: [pl, plugins]
+    help:
+        description: Get help.
+        usage: /<command>
+    rules:
+        description: View rules of server.
+        usage: /<command>
+    discord:
+        description: View discord join link.
+        usage: /<command>
+    updatescenarioboard:
+        description: Update the scenario board.
+        usage: /<command>
+    updatetopboards:
+        description: Update the top player boards.
+        usage: /<command>
+    list:
+        description: List all players online
+        usage: /<command>
+    join:
+        description: Join a game
+        usage: /<command>
+    fakeleave:
+        description: Fake leave server
+        usage: /<command>
+    patreon:
+        description: Shows patreon info!
+        usage: /<command>
+    member:
+        description: Shows Member info!
+        usage: /<command>
+    removeallentities:
+        description: removes all entites
+        usage: /<command>
+    nation:
+        description: for nation stuff
+        usage: /<command>
